@@ -380,12 +380,12 @@
 </main>
 
 <script>
-  const fileInput = document.getElementById('file-input');
   const uploadArea = document.getElementById('upload-area');
   const submitBtn = document.getElementById('submit-btn');
   const uploadCard = document.getElementById('upload-card');
   const loadingEl = document.getElementById('loading');
   const loadingStep = document.getElementById('loading-step');
+  const fill = document.getElementById('progress-fill');
   const resultCard = document.getElementById('result-card');
   const bookTitle = document.getElementById('book-title');
   const summaryBody = document.getElementById('summary-body');
@@ -394,25 +394,60 @@
 
   let imageBase64 = null;
 
-  function bindFileInput() {
-    const input = document.getElementById('file-input');
-    input.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const dataUrl = ev.target.result;
-        imageBase64 = dataUrl.split(',')[1];
-        uploadArea.innerHTML = `<img class="preview" src="${dataUrl}" alt="Page preview" />`;
-        uploadArea.classList.add('has-image');
-        submitBtn.disabled = false;
-        errorMsg.classList.remove('visible');
-      };
-      reader.readAsDataURL(file);
-    });
+  function resetUploadArea() {
+    uploadArea.classList.remove('has-image');
+    uploadArea.innerHTML = `
+      <div class="upload-icon">📖</div>
+      <div class="upload-label">Tap to photograph your page</div>
+      <div class="upload-sublabel">or drop an image here</div>
+      <input type="file" accept="image/*" id="file-input" />`;
+    bindFileInput();
   }
 
+  function handleFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      imageBase64 = dataUrl.split(',')[1];
+      uploadArea.innerHTML = `<img class="preview" src="${dataUrl}" alt="Page preview" />`;
+      uploadArea.classList.add('has-image');
+      submitBtn.disabled = false;
+      errorMsg.classList.remove('visible');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function bindFileInput() {
+    const input = document.getElementById('file-input');
+    if (!input) return;
+    input.addEventListener('change', (e) => handleFile(e.target.files[0]));
+  }
+
+  // Drag and drop
+  uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.style.background = 'rgba(255,255,255,0.3)';
+  });
+  uploadArea.addEventListener('dragleave', () => {
+    uploadArea.style.background = '';
+  });
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.style.background = '';
+    handleFile(e.dataTransfer.files[0]);
+  });
+
   bindFileInput();
+
+  function setStep(index, set, pct) {
+    loadingStep.style.opacity = 0;
+    fill.style.width = pct + '%';
+    setTimeout(() => {
+      loadingStep.textContent = set[index];
+      loadingStep.style.opacity = 1;
+    }, 300);
+  }
 
   submitBtn.addEventListener('click', async () => {
     if (!imageBase64) return;
@@ -426,31 +461,18 @@
     ];
     const set = sets[Math.floor(Math.random() * sets.length)];
 
-    function setStep(index, pct) {
-      loadingStep.style.opacity = 0;
-      fill.style.width = pct + '%';
-      setTimeout(() => {
-        loadingStep.textContent = set[index];
-        loadingStep.style.opacity = 1;
-      }, 300);
-    }
-
     try {
-      // Step 1: OCR
-      setStep(0, 5);
+      setStep(0, set, 5);
       const ocrResp = await fetch('/ocr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: imageBase64 })
       });
       const { text } = await ocrResp.json();
       fill.style.width = '33%';
 
-      // Step 2: Identify book
-      setStep(1, 38);
+      setStep(1, set, 38);
       const identResp = await fetch('/identify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text })
       });
       const identData = await identResp.json();
@@ -463,17 +485,13 @@
         errorMsg.textContent = "Couldn't identify the book from this page. Try a photo of the cover or spine.";
         errorMsg.classList.add('visible');
         submitBtn.disabled = true;
-        uploadArea.innerHTML = `<div class="upload-icon">📖</div><div class="upload-label">Tap to photograph your page</div><div class="upload-sublabel">or drop an image here</div><input type="file" accept="image/*" capture="environment" id="file-input" />`;
-        uploadArea.classList.remove('has-image');
-        bindFileInput();
+        resetUploadArea();
         return;
       }
 
-      // Step 3: Summarize
-      setStep(2, 70);
+      setStep(2, set, 70);
       const sumResp = await fetch('/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, book: identData.book })
       });
       const { summary } = await sumResp.json();
@@ -487,11 +505,8 @@
 
       bookTitle.textContent = identData.book;
       summaryBody.innerHTML = summary
-        .split('\n\n')
-        .filter(p => p.trim())
-        .map(p => `<p>${p.trim()}</p>`)
-        .join('');
-
+        .split('\n\n').filter(p => p.trim())
+        .map(p => `<p>${p.trim()}</p>`).join('');
       resultCard.classList.add('visible');
 
     } catch (err) {
@@ -503,44 +518,13 @@
     }
   });
 
-      if (data.status === 'needs_cover') {
-        uploadCard.style.display = 'block';
-        errorMsg.textContent = "Couldn't identify the book from this page. Try a photo of the cover or spine.";
-        errorMsg.classList.add('visible');
-        submitBtn.disabled = true;
-        uploadArea.innerHTML = `<div class="upload-icon">📖</div><div class="upload-label">Tap to photograph your page</div><div class="upload-sublabel">or drop an image here</div><input type="file" accept="image/*" capture="environment" id="file-input" />`;
-        uploadArea.classList.remove('has-image');
-        bindFileInput();
-        return;
-      }
-
-      bookTitle.textContent = data.book;
-      summaryBody.innerHTML = data.summary
-        .split('\n\n')
-        .filter(p => p.trim())
-        .map(p => `<p>${p.trim()}</p>`)
-        .join('');
-
-      resultCard.classList.add('visible');
-
-    } catch (err) {
-      clearInterval(stepInterval);
-      loadingEl.classList.remove('visible');
-      uploadCard.style.display = 'block';
-      errorMsg.textContent = 'Something went wrong. Please try again.';
-      errorMsg.classList.add('visible');
-    }
-  });
-
   tryAgain.addEventListener('click', () => {
     resultCard.classList.remove('visible');
     uploadCard.style.display = 'block';
-    uploadArea.classList.remove('has-image');
-    uploadArea.innerHTML = `<div class="upload-icon">📖</div><div class="upload-label">Tap to photograph your page</div><div class="upload-sublabel">or drop an image here</div><input type="file" accept="image/*" capture="environment" id="file-input" />`;
-    bindFileInput();
     submitBtn.disabled = true;
     imageBase64 = null;
     errorMsg.classList.remove('visible');
+    resetUploadArea();
   });
 </script>
 
