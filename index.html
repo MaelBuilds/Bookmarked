@@ -235,65 +235,75 @@
 
     .spinner { display: none; }
 
+    /* Flat book with flipping pages */
     .book {
-      width: 80px;
-      height: 60px;
+      width: 90px;
+      height: 70px;
       position: relative;
       margin: 0 auto 24px;
-      perspective: 400px;
     }
 
-    .book-cover {
-      position: absolute;
-      bottom: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      gap: 2px;
-    }
-
-    .book-half {
-      width: 38px;
-      height: 56px;
-      background: rgba(255,255,255,0.9);
-      border-radius: 2px;
+    .book-body {
+      width: 90px;
+      height: 64px;
+      background: rgba(255,255,255,0.15);
+      border: 2px solid rgba(255,255,255,0.6);
+      border-radius: 3px 8px 8px 3px;
       position: relative;
+      overflow: hidden;
     }
 
-    .book-half.left  { border-radius: 4px 0 0 4px; transform-origin: right center; }
-    .book-half.right { border-radius: 0 4px 4px 0; transform-origin: left center; }
+    /* Spine line */
+    .book-body::before {
+      content: '';
+      position: absolute;
+      left: 10px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: rgba(255,255,255,0.4);
+    }
 
-    .book-spine {
-      width: 4px;
-      height: 56px;
-      background: rgba(255,255,255,0.5);
-      align-self: flex-end;
+    /* Flipping page */
+    .book-page {
+      position: absolute;
+      top: 6px;
+      left: 14px;
+      right: 6px;
+      bottom: 6px;
+      background: rgba(255,255,255,0.85);
+      border-radius: 1px 4px 4px 1px;
+      transform-origin: left center;
+      animation: page-flip 1.6s ease-in-out infinite;
+    }
+
+    .book-page:nth-child(2) {
+      background: rgba(255,255,255,0.6);
+      animation-delay: 0.2s;
+    }
+
+    .book-page:nth-child(3) {
+      background: rgba(255,255,255,0.35);
+      animation-delay: 0.4s;
+    }
+
+    /* Horizontal lines on page */
+    .book-page::before {
+      content: '';
+      position: absolute;
+      top: 8px; left: 8px; right: 8px;
+      height: 2px;
+      background: rgba(241,77,58,0.25);
+      box-shadow: 0 8px 0 rgba(241,77,58,0.2), 0 16px 0 rgba(241,77,58,0.15), 0 24px 0 rgba(241,77,58,0.1);
       border-radius: 1px;
     }
 
-    .page {
-      position: absolute;
-      top: 2px;
-      width: 34px;
-      height: 52px;
-      background: linear-gradient(to right, #fff8f5, #ffffff);
-      transform-origin: left center;
-      border-radius: 0 2px 2px 0;
-      transform-style: preserve-3d;
-      animation: flip 1.4s ease-in-out infinite;
-      right: 2px;
-    }
-
-    .page:nth-child(2) { animation-delay: 0.2s; background: linear-gradient(to right, #fff0ec, #fff8f5); }
-    .page:nth-child(3) { animation-delay: 0.4s; background: linear-gradient(to right, #ffe8e2, #fff0ec); }
-
-    @keyframes flip {
-      0%   { transform: rotateY(0deg); opacity: 1; }
-      40%  { transform: rotateY(-140deg); opacity: 1; }
-      50%  { transform: rotateY(-180deg); opacity: 0; }
-      100% { transform: rotateY(-180deg); opacity: 0; }
+    @keyframes page-flip {
+      0%   { transform: scaleX(1); }
+      35%  { transform: scaleX(-0.05); }
+      50%  { transform: scaleX(0); }
+      65%  { transform: scaleX(-0.05); }
+      100% { transform: scaleX(1); }
     }
 
     .loading-label {
@@ -411,14 +421,10 @@
   <!-- Loading -->
   <div class="loading" id="loading">
     <div class="book">
-      <div class="book-cover">
-        <div class="book-half left"></div>
-        <div class="book-spine"></div>
-        <div class="book-half right">
-          <div class="page"></div>
-          <div class="page"></div>
-          <div class="page"></div>
-        </div>
+      <div class="book-body">
+        <div class="book-page"></div>
+        <div class="book-page"></div>
+        <div class="book-page"></div>
       </div>
     </div>
     <div class="loading-label">One moment…</div>
