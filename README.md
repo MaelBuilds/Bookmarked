@@ -1,61 +1,55 @@
-# Amy's Library
-
-Take a photo of the page you're on. Get a spoiler-free catch-up summary — no backtracking, no accidental reveals.
+# Amy's Library 📔
 
 ---
 
-## The problem
+Baby's crying, something on the stove, your stop on the subway — there are a thousand reasons to drop your book right where you are. And a thousand more not to pick it back up for three weeks. Until you do, and you're back staring at the page with no idea who this person is or why you should care.
 
-You put a book down for three weeks. Google tells you what happens in chapter 40. Re-reading feels like homework. Amy's Library anchors to exactly where you are and tells you only what you've already read.
+So you Google it. And now you know how it ends.
+
+**There's a better way.**
+
+Photo your page. Amy reads where you stopped and catches you up — who's there, what's at stake, what just happened. Nothing beyond your page. No spoilers, no re-reading, no ruined endings.
+
+---
 
 ## How it works
 
-1. Upload or drag a photo of your current page
-2. The app reads the text, identifies the book, and generates a summary
-3. You get: who the character is, the stakes of their situation, and what just happened — nothing beyond your page
+1. Take a photo of your current page
+2. Amy identifies the book and reads the passage
+3. You get a spoiler-free catch-up, anchored to exactly where you stopped
+
+---
 
 ## Stack
 
-- **Backend:** Python / Flask — three endpoints: `/ocr`, `/identify`, `/summarize`
+- **Backend:** Python / Flask — `/ocr`, `/identify`, `/summarize`
 - **Model:** GPT-4o-mini via [GitHub Models](https://github.com/marketplace/models)
 - **Frontend:** Vanilla HTML/CSS/JS — no framework, no build step
-- **Design:** Libby-inspired warm gradient (`#F14D3A → #FFE7DD`)
+
+---
 
 ## Running locally
 
-**Prerequisites:** Python 3, Flask, a GitHub personal access token with Models access.
+**Prerequisites:** Python 3 and a GitHub personal access token with Models access.
 
 ```bash
 git clone https://github.com/MaelBuilds/Bookmarked.git
 cd Bookmarked
 pip3 install flask flask-cors requests python-dotenv
-```
-
-Create a `.env` file from the example:
-
-```bash
 cp .env.example .env
-```
-
-Edit `.env` and replace `your_github_token_here` with a real [GitHub personal access token](https://github.com/settings/tokens).
-
-Start the server:
-
-```bash
-nohup python3 server.py > server.log 2>&1 &
+# Edit .env and add your GitHub token
+python3 server.py
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
+---
+
 ## Status
 
-Working MVP — tested on *Project Hail Mary* by Andy Weir. Local only. Cloud deployment not yet set up.
-
-## Built with
-
-Vibe coded with [GitHub Copilot CLI](https://githubnext.com/projects/copilot-cli) (Claude Sonnet) in a single session — from idea to working MVP.
+Working MVP — tested on *Project Hail Mary* by Andy Weir. Local only.
 
 **Known limitations:**
-- Very obscure or self-published books may not be identified reliably
-- Dialogue-heavy or very short passages may not anchor precisely
-- GitHub Models free tier has rate limits — occasional 429s on heavy use
+- Very obscure or self-published books may not identify reliably
+- Very short or dialogue-only passages may not anchor precisely
+- GitHub Models free tier has rate limits — occasional slowdowns on heavy use
