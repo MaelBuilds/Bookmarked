@@ -233,16 +233,68 @@
     }
     .loading.visible { display: block; }
 
-    .spinner {
-      width: 48px;
-      height: 48px;
-      border: 3px solid rgba(255,255,255,0.3);
-      border-top-color: var(--white);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 20px;
+    .spinner { display: none; }
+
+    .book {
+      width: 80px;
+      height: 60px;
+      position: relative;
+      margin: 0 auto 24px;
+      perspective: 400px;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .book-cover {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 2px;
+    }
+
+    .book-half {
+      width: 38px;
+      height: 56px;
+      background: rgba(255,255,255,0.9);
+      border-radius: 2px;
+      position: relative;
+    }
+
+    .book-half.left  { border-radius: 4px 0 0 4px; transform-origin: right center; }
+    .book-half.right { border-radius: 0 4px 4px 0; transform-origin: left center; }
+
+    .book-spine {
+      width: 4px;
+      height: 56px;
+      background: rgba(255,255,255,0.5);
+      align-self: flex-end;
+      border-radius: 1px;
+    }
+
+    .page {
+      position: absolute;
+      top: 2px;
+      width: 34px;
+      height: 52px;
+      background: linear-gradient(to right, #fff8f5, #ffffff);
+      transform-origin: left center;
+      border-radius: 0 2px 2px 0;
+      transform-style: preserve-3d;
+      animation: flip 1.4s ease-in-out infinite;
+      right: 2px;
+    }
+
+    .page:nth-child(2) { animation-delay: 0.2s; background: linear-gradient(to right, #fff0ec, #fff8f5); }
+    .page:nth-child(3) { animation-delay: 0.4s; background: linear-gradient(to right, #ffe8e2, #fff0ec); }
+
+    @keyframes flip {
+      0%   { transform: rotateY(0deg); opacity: 1; }
+      40%  { transform: rotateY(-140deg); opacity: 1; }
+      50%  { transform: rotateY(-180deg); opacity: 0; }
+      100% { transform: rotateY(-180deg); opacity: 0; }
+    }
 
     .loading-label {
       font-size: 17px;
@@ -358,7 +410,17 @@
 
   <!-- Loading -->
   <div class="loading" id="loading">
-    <div class="spinner"></div>
+    <div class="book">
+      <div class="book-cover">
+        <div class="book-half left"></div>
+        <div class="book-spine"></div>
+        <div class="book-half right">
+          <div class="page"></div>
+          <div class="page"></div>
+          <div class="page"></div>
+        </div>
+      </div>
+    </div>
     <div class="loading-label">One moment…</div>
     <div class="loading-step" id="loading-step"></div>
     <div class="progress-track">
