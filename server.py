@@ -5,6 +5,7 @@ from flask import Flask, request, jsonify, send_from_directory
 import os
 
 app = Flask(__name__, static_folder='.')
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB upload cap
 
 def _load_token():
     env_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -34,6 +35,19 @@ def index():
 @app.route('/ocr', methods=['POST'])
 def ocr():
     image_data = request.json.get('image')
+    if not image_data:
+        return jsonify({"error": "No image provided"}), 400
+    # Basic validation: base64-encoded images start with expected prefixes
+    try:
+        header = image_data[:16].encode() if isinstance(image_data, str) else image_data[:16]
+        import base64 as _b64
+        decoded_start = _b64.b64decode(image_data[:20] + '==')[:4]
+        # JPEG: FF D8, PNG: 89 50, GIF: 47 49, WEBP: 52 49
+        valid_sigs = [b'\xff\xd8', b'\x89P', b'GI', b'RI']
+        if not any(decoded_start[:2] == sig for sig in valid_sigs):
+            return jsonify({"error": "Invalid image format"}), 400
+    except Exception:
+        return jsonify({"error": "Invalid image data"}), 400
     extracted = call_gpt([
         {"role": "system", "content": "Extract only the text visible in this image. Return raw text exactly as it appears. Nothing else."},
         {"role": "user", "content": [
@@ -75,4 +89,5 @@ Rules:
     return jsonify({"summary": summary})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=3000)
+    debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(debug=debug, port=3000)
