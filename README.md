@@ -49,6 +49,10 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Working MVP — tested on *Project Hail Mary* by Andy Weir. Local only. Cloud deployment not yet set up.
 
+## Built with
+
+Vibe coded with [GitHub Copilot CLI](https://githubnext.com/projects/copilot-cli) (Claude Sonnet) in a single session — from idea to working MVP.
+
 **Known limitations:**
 - Very obscure or self-published books may not be identified reliably
 - Dialogue-heavy or very short passages may not anchor precisely
