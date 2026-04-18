@@ -140,3 +140,7 @@ vite.config.ts.timestamp-*
 .env
 server.log
 nohup.out
+.DS_Store
+*.png
+*.jpg
+*.jpeg
