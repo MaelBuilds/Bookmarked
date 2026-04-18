@@ -254,6 +254,25 @@
     .loading-step {
       font-size: 13px;
       color: rgba(255,255,255,0.7);
+      margin-bottom: 24px;
+      min-height: 20px;
+      transition: opacity 0.3s;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--white);
+      border-radius: 99px;
+      transition: width 0.6s ease;
     }
 
     /* ── Result ── */
@@ -340,8 +359,11 @@
   <!-- Loading -->
   <div class="loading" id="loading">
     <div class="spinner"></div>
-    <div class="loading-label">Reading your page…</div>
-    <div class="loading-step" id="loading-step">Identifying the book</div>
+    <div class="loading-label">One moment…</div>
+    <div class="loading-step" id="loading-step"></div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
   </div>
 
   <!-- Result -->
@@ -396,20 +418,52 @@
     if (!imageBase64) return;
     uploadCard.style.display = 'none';
     loadingEl.classList.add('visible');
-    loadingStep.textContent = 'Reading the page…';
+
+    const steps = [
+      { text: "Adjusting reading glasses…", pct: 10 },
+      { text: "Scanning the page…", pct: 22 },
+      { text: "Checking the library card…", pct: 35 },
+      { text: "Consulting the narrator…", pct: 48 },
+      { text: "Shushing the spoilers…", pct: 62 },
+      { text: "Dog-earing your place…", pct: 74 },
+      { text: "Reading between the lines…", pct: 85 },
+      { text: "Almost there…", pct: 93 },
+    ];
+
+    const fill = document.getElementById('progress-fill');
+    let stepIndex = 0;
+
+    function nextStep() {
+      if (stepIndex < steps.length) {
+        loadingStep.style.opacity = 0;
+        setTimeout(() => {
+          loadingStep.textContent = steps[stepIndex].text;
+          fill.style.width = steps[stepIndex].pct + '%';
+          loadingStep.style.opacity = 1;
+          stepIndex++;
+        }, 300);
+      }
+    }
+
+    nextStep();
+    const stepInterval = setInterval(nextStep, 2800);
 
     try {
-      setTimeout(() => loadingStep.textContent = 'Identifying the book…', 2500);
-      setTimeout(() => loadingStep.textContent = 'Building your spoiler-free summary…', 6000);
-
       const resp = await fetch('/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: imageBase64 })
       });
 
+      clearInterval(stepInterval);
+      fill.style.width = '100%';
+      loadingStep.textContent = "Done ✓";
+
+      await new Promise(r => setTimeout(r, 500));
+
       const data = await resp.json();
       loadingEl.classList.remove('visible');
+      fill.style.width = '0%';
 
       if (data.status === 'needs_cover') {
         uploadCard.style.display = 'block';
@@ -432,6 +486,7 @@
       resultCard.classList.add('visible');
 
     } catch (err) {
+      clearInterval(stepInterval);
       loadingEl.classList.remove('visible');
       uploadCard.style.display = 'block';
       errorMsg.textContent = 'Something went wrong. Please try again.';
