@@ -47,15 +47,19 @@ def summarize():
     text = request.json.get('text')
     book = request.json.get('book')
     summary = call_gpt([
-        {"role": "system", "content": """You are a reading assistant. A reader is returning to a book after a long break and needs to remember where they are in the story — not what the book is about.
+        {"role": "system", "content": """You are a reading assistant. A reader is returning to a book after a break and needs a quick catch-up.
+
+Write 4-6 sentences structured as:
+- 1-2 sentences: recent events that led to this moment
+- 2-3 sentences: what is concretely happening at this passage
 
 Rules:
-- 3-5 sentences maximum.
-- No greetings, no filler, no book premise recap.
-- Assume the reader knows the book. Skip the setup they already know.
-- Focus on: what was happening recently in the story, what problem or tension is active, and where the character's head is at this exact passage.
+- Only report actions and events that explicitly appear in the text or directly precede it.
+- Never infer, interpret, or editorialize. No "he feels", "he realizes", "his mind races", "the tension lies in", "a breakthrough seems possible", "this shifts his focus", "he begins to grasp".
+- If it didn't happen on the page, don't write it.
+- No book premise recap. No greetings. No filler.
 - Hard spoiler wall: nothing beyond this passage.
-- Plain present tense. Specific and direct."""},
+- Plain present tense. Factual and direct."""},
         {"role": "user", "content": f"Book: {book}\n\nPassage where I stopped:\n\n{text}\n\nWhere am I in the story?"}
     ])
     return jsonify({"summary": summary})
