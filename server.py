@@ -19,11 +19,9 @@ def call_gpt(messages):
 def index():
     return send_from_directory('.', 'index.html')
 
-@app.route('/summarize', methods=['POST'])
-def summarize():
-    image_data = request.json.get('image')  # base64 string
-
-    # Step 1: OCR
+@app.route('/ocr', methods=['POST'])
+def ocr():
+    image_data = request.json.get('image')
     extracted = call_gpt([
         {"role": "system", "content": "Extract only the text visible in this image. Return raw text exactly as it appears. Nothing else."},
         {"role": "user", "content": [
@@ -31,17 +29,23 @@ def summarize():
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
         ]}
     ])
+    return jsonify({"text": extracted})
 
-    # Step 2: Identify book
+@app.route('/identify', methods=['POST'])
+def identify():
+    text = request.json.get('text')
     book = call_gpt([
         {"role": "system", "content": "Identify the book and author from this text excerpt. Reply with only: Title by Author. If you cannot identify it, reply with only: UNKNOWN"},
-        {"role": "user", "content": extracted}
+        {"role": "user", "content": text}
     ])
-
     if book.strip().upper() == "UNKNOWN":
         return jsonify({"status": "needs_cover"})
+    return jsonify({"status": "ok", "book": book})
 
-    # Step 3: Spoiler-free summary
+@app.route('/summarize', methods=['POST'])
+def summarize():
+    text = request.json.get('text')
+    book = request.json.get('book')
     summary = call_gpt([
         {"role": "system", "content": """You are a reading assistant. A reader is returning to a book after a long break and needs to remember where they are in the story — not what the book is about.
 
@@ -52,10 +56,9 @@ Rules:
 - Focus on: what was happening recently in the story, what problem or tension is active, and where the character's head is at this exact passage.
 - Hard spoiler wall: nothing beyond this passage.
 - Plain present tense. Specific and direct."""},
-        {"role": "user", "content": f"Book: {book}\n\nPassage where I stopped:\n\n{extracted}\n\nWhere am I in the story?"}
+        {"role": "user", "content": f"Book: {book}\n\nPassage where I stopped:\n\n{text}\n\nWhere am I in the story?"}
     ])
-
-    return jsonify({"status": "ok", "book": book, "summary": summary})
+    return jsonify({"summary": summary})
 
 if __name__ == '__main__':
     app.run(debug=True, port=3000)

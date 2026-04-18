@@ -419,51 +419,89 @@
     uploadCard.style.display = 'none';
     loadingEl.classList.add('visible');
 
-    const steps = [
-      { text: "Adjusting reading glasses…", pct: 10 },
-      { text: "Scanning the page…", pct: 22 },
-      { text: "Checking the library card…", pct: 35 },
-      { text: "Consulting the narrator…", pct: 48 },
-      { text: "Shushing the spoilers…", pct: 62 },
-      { text: "Dog-earing your place…", pct: 74 },
-      { text: "Reading between the lines…", pct: 85 },
-      { text: "Almost there…", pct: 93 },
+    const sets = [
+      ["Adjusting reading glasses…", "Analyzing the page…", "Shushing the spoilers…"],
+      ["Finding your bookmark…", "Cross-referencing the plot…", "Sealing the spoiler vault…"],
+      ["Waking the librarian…", "Speed-reading the chapters…", "Building your memory palace…"],
     ];
+    const set = sets[Math.floor(Math.random() * sets.length)];
 
-    const fill = document.getElementById('progress-fill');
-    let stepIndex = 0;
-
-    function nextStep() {
-      if (stepIndex < steps.length) {
-        loadingStep.style.opacity = 0;
-        setTimeout(() => {
-          loadingStep.textContent = steps[stepIndex].text;
-          fill.style.width = steps[stepIndex].pct + '%';
-          loadingStep.style.opacity = 1;
-          stepIndex++;
-        }, 300);
-      }
+    function setStep(index, pct) {
+      loadingStep.style.opacity = 0;
+      fill.style.width = pct + '%';
+      setTimeout(() => {
+        loadingStep.textContent = set[index];
+        loadingStep.style.opacity = 1;
+      }, 300);
     }
 
-    nextStep();
-    const stepInterval = setInterval(nextStep, 2800);
-
     try {
-      const resp = await fetch('/summarize', {
+      // Step 1: OCR
+      setStep(0, 5);
+      const ocrResp = await fetch('/ocr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: imageBase64 })
       });
+      const { text } = await ocrResp.json();
+      fill.style.width = '33%';
 
-      clearInterval(stepInterval);
+      // Step 2: Identify book
+      setStep(1, 38);
+      const identResp = await fetch('/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const identData = await identResp.json();
+      fill.style.width = '66%';
+
+      if (identData.status === 'needs_cover') {
+        loadingEl.classList.remove('visible');
+        fill.style.width = '0%';
+        uploadCard.style.display = 'block';
+        errorMsg.textContent = "Couldn't identify the book from this page. Try a photo of the cover or spine.";
+        errorMsg.classList.add('visible');
+        submitBtn.disabled = true;
+        uploadArea.innerHTML = `<div class="upload-icon">📖</div><div class="upload-label">Tap to photograph your page</div><div class="upload-sublabel">or drop an image here</div><input type="file" accept="image/*" capture="environment" id="file-input" />`;
+        uploadArea.classList.remove('has-image');
+        bindFileInput();
+        return;
+      }
+
+      // Step 3: Summarize
+      setStep(2, 70);
+      const sumResp = await fetch('/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, book: identData.book })
+      });
+      const { summary } = await sumResp.json();
+
       fill.style.width = '100%';
-      loadingStep.textContent = "Done ✓";
-
+      loadingStep.textContent = 'Done ✓';
       await new Promise(r => setTimeout(r, 500));
 
-      const data = await resp.json();
       loadingEl.classList.remove('visible');
       fill.style.width = '0%';
+
+      bookTitle.textContent = identData.book;
+      summaryBody.innerHTML = summary
+        .split('\n\n')
+        .filter(p => p.trim())
+        .map(p => `<p>${p.trim()}</p>`)
+        .join('');
+
+      resultCard.classList.add('visible');
+
+    } catch (err) {
+      loadingEl.classList.remove('visible');
+      fill.style.width = '0%';
+      uploadCard.style.display = 'block';
+      errorMsg.textContent = 'Something went wrong. Please try again.';
+      errorMsg.classList.add('visible');
+    }
+  });
 
       if (data.status === 'needs_cover') {
         uploadCard.style.display = 'block';
