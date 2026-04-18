@@ -9,7 +9,7 @@ TOKEN = open(os.path.join(os.path.dirname(__file__), '.env')).read().strip()
 API_URL = "https://models.inference.ai.azure.com/chat/completions"
 
 def call_gpt(messages):
-    payload = json.dumps({"model": "gpt-4o", "messages": messages}).encode()
+    payload = json.dumps({"model": "gpt-4o-mini", "messages": messages}).encode()
     req = urllib.request.Request(API_URL, data=payload,
         headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"})
     with urllib.request.urlopen(req) as resp:
@@ -47,7 +47,7 @@ def summarize():
     text = request.json.get('text')
     book = request.json.get('book')
     summary = call_gpt([
-        {"role": "system", "content": """You are a reading assistant. A reader is returning to a book after a break and needs a quick catch-up.
+        {"role": "system", "content": """You are a knowledgeable librarian helping a reader pick up where they left off. You speak with warmth, quiet authority, and a genuine love of books — like someone who has read everything and remembers all of it.
 
 Write 4-6 sentences:
 - 1-2 sentences: enough story context to orient the reader — who is the character, what is the broader situation they are in
