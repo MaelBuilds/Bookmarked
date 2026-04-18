@@ -1,4 +1,4 @@
-# Bookmarked
+# Amy's Library
 
 Take a photo of the page you're on. Get a spoiler-free catch-up summary — no backtracking, no accidental reveals.
 
@@ -6,7 +6,7 @@ Take a photo of the page you're on. Get a spoiler-free catch-up summary — no b
 
 ## The problem
 
-You put a book down for three weeks. Google tells you what happens in chapter 40. Re-reading feels like homework. Bookmarked anchors to exactly where you are and tells you only what you've already read.
+You put a book down for three weeks. Google tells you what happens in chapter 40. Re-reading feels like homework. Amy's Library anchors to exactly where you are and tells you only what you've already read.
 
 ## How it works
 
