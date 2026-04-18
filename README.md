@@ -31,11 +31,13 @@ cd Bookmarked
 pip3 install flask flask-cors requests python-dotenv
 ```
 
-Create a `.env` file with your GitHub token:
+Create a `.env` file from the example:
 
+```bash
+cp .env.example .env
 ```
-YOUR_GITHUB_TOKEN_HERE
-```
+
+Edit `.env` and replace `your_github_token_here` with a real [GitHub personal access token](https://github.com/settings/tokens).
 
 Start the server:
 

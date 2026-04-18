@@ -5,16 +5,25 @@ from flask import Flask, request, jsonify, send_from_directory
 import os
 
 app = Flask(__name__, static_folder='.')
-_ENV_TOKEN = open(os.path.join(os.path.dirname(__file__), '.env')).read().strip() if os.path.exists(os.path.join(os.path.dirname(__file__), '.env')) else None
+
+def _load_token():
+    env_path = os.path.join(os.path.dirname(__file__), '.env')
+    if not os.path.exists(env_path):
+        raise RuntimeError(".env file not found — copy .env.example to .env and add your token")
+    for line in open(env_path).read().splitlines():
+        line = line.strip()
+        if line and not line.startswith('#') and '=' in line:
+            key, _, val = line.partition('=')
+            if key.strip() == 'GITHUB_TOKEN':
+                return val.strip()
+    raise RuntimeError("GITHUB_TOKEN not found in .env")
+_ENV_TOKEN = _load_token()
 API_URL = "https://models.inference.ai.azure.com/chat/completions"
 
-def call_gpt(messages, token=None):
-    t = token or _ENV_TOKEN
-    if not t:
-        raise ValueError("No API token provided")
+def call_gpt(messages):
     payload = json.dumps({"model": "gpt-4o-mini", "messages": messages}).encode()
     req = urllib.request.Request(API_URL, data=payload,
-        headers={"Authorization": f"Bearer {t}", "Content-Type": "application/json"})
+        headers={"Authorization": f"Bearer {_ENV_TOKEN}", "Content-Type": "application/json"})
     with urllib.request.urlopen(req) as resp:
         return json.load(resp)["choices"][0]["message"]["content"]
 
@@ -25,24 +34,22 @@ def index():
 @app.route('/ocr', methods=['POST'])
 def ocr():
     image_data = request.json.get('image')
-    token = request.json.get('token')
     extracted = call_gpt([
         {"role": "system", "content": "Extract only the text visible in this image. Return raw text exactly as it appears. Nothing else."},
         {"role": "user", "content": [
             {"type": "text", "text": "Extract the text from this page."},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
         ]}
-    ], token=token)
+    ])
     return jsonify({"text": extracted})
 
 @app.route('/identify', methods=['POST'])
 def identify():
     text = request.json.get('text')
-    token = request.json.get('token')
     book = call_gpt([
         {"role": "system", "content": "Identify the book and author from this text excerpt. Reply with only: Title by Author. If you cannot identify it, reply with only: UNKNOWN"},
         {"role": "user", "content": text}
-    ], token=token)
+    ])
     if book.strip().upper() == "UNKNOWN":
         return jsonify({"status": "needs_cover"})
     return jsonify({"status": "ok", "book": book})
@@ -51,7 +58,6 @@ def identify():
 def summarize():
     text = request.json.get('text')
     book = request.json.get('book')
-    token = request.json.get('token')
     summary = call_gpt([
         {"role": "system", "content": """You are a knowledgeable librarian helping a reader pick up where they left off. You speak with warmth, quiet authority, and a genuine love of books — like someone who has read everything and remembers all of it.
 
@@ -65,7 +71,7 @@ Rules:
 - No greetings, no filler.
 - Plain present tense."""},
         {"role": "user", "content": f"Book: {book}\n\nPassage where I stopped:\n\n{text}\n\nWhere am I in the story?"}
-    ], token=token)
+    ])
     return jsonify({"summary": summary})
 
 if __name__ == '__main__':
