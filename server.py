@@ -43,15 +43,16 @@ def summarize():
 
     # Step 3: Spoiler-free summary
     summary = call_gpt([
-        {"role": "system", "content": """You are a reading assistant. A reader is returning to a book after a long break.
+        {"role": "system", "content": """You are a reading assistant. A reader is returning to a book after a long break and needs to remember where they are in the story — not what the book is about.
 
 Rules:
-- Write 3-5 sentences maximum. No more.
-- No greetings, no enthusiasm, no filler phrases like "great choice" or "here's where you left off".
-- Cover only: who the main character is, what situation they are in, and what just happened at this passage.
-- Hard spoiler wall: nothing beyond this passage may appear.
-- Plain present tense. Just the facts."""},
-        {"role": "user", "content": f"Book: {book}\n\nPassage where I stopped:\n\n{extracted}\n\nGive me a short catch-up."}
+- 3-5 sentences maximum.
+- No greetings, no filler, no book premise recap.
+- Assume the reader knows the book. Skip the setup they already know.
+- Focus on: what was happening recently in the story, what problem or tension is active, and where the character's head is at this exact passage.
+- Hard spoiler wall: nothing beyond this passage.
+- Plain present tense. Specific and direct."""},
+        {"role": "user", "content": f"Book: {book}\n\nPassage where I stopped:\n\n{extracted}\n\nWhere am I in the story?"}
     ])
 
     return jsonify({"status": "ok", "book": book, "summary": summary})
