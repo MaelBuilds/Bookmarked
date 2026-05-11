@@ -79,13 +79,7 @@ def identify():
         return jsonify({"status": "needs_cover"})
     return jsonify({"status": "ok", "book": book})
 
-@app.route('/summarize', methods=['POST'])
-@limiter.limit("20 per day; 5 per minute")
-def summarize():
-    text = request.json.get('text')
-    book = request.json.get('book')
-    summary = call_gpt([
-        {"role": "system", "content": """You are a knowledgeable librarian helping a reader pick up where they left off. You speak with warmth, quiet authority, and a genuine love of books — like someone who has read everything and remembers all of it.
+PROMPT_LIGHT = """You are a knowledgeable librarian helping a reader pick up where they left off. You speak with warmth, quiet authority, and a genuine love of books — like someone who has read everything and remembers all of it.
 
 Write 4-6 sentences:
 - 1-2 sentences: orient the reader — who the character is, their background, and the stakes of their situation (mission, circumstances, what brought them here)
@@ -95,7 +89,33 @@ Rules:
 - Stick to facts and events. No emotional interpretation ("he feels", "his mind races"), no dramatic framing ("the tension lies in", "this marks a significant moment").
 - No spoilers beyond this passage.
 - No greetings, no filler.
-- Plain present tense."""},
+- Plain present tense."""
+
+PROMPT_FULL = """You are a knowledgeable librarian helping a reader who has been away from a book for a long time and needs a full catch-up. You speak with warmth and a genuine love of books.
+
+Write three sections — no headers, just flowing prose separated by a blank line:
+
+1. The main characters: who they are, their role in the story, and where they stand as of this passage. Cover every significant character the reader has met so far.
+
+2. The key events: what has happened from the beginning of the book up to this passage, in order. Hit the major plot points — decisions made, conflicts introduced, turning points reached.
+
+3. Right now: what is concretely happening at this exact passage.
+
+Rules:
+- The passage is the hard spoiler wall. Nothing beyond it.
+- Stick to facts and events. No emotional interpretation, no dramatic framing.
+- No greetings, no filler, no section labels.
+- Plain present tense."""
+
+@app.route('/summarize', methods=['POST'])
+@limiter.limit("20 per day; 5 per minute")
+def summarize():
+    text = request.json.get('text')
+    book = request.json.get('book')
+    mode = request.json.get('mode', 'light')
+    prompt = PROMPT_FULL if mode == 'full' else PROMPT_LIGHT
+    summary = call_gpt([
+        {"role": "system", "content": prompt},
         {"role": "user", "content": f"Book: {book}\n\nPassage where I stopped:\n\n{text}\n\nWhere am I in the story?"}
     ])
     return jsonify({"summary": summary})

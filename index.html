@@ -213,6 +213,35 @@
       background: rgba(255,255,255,0.08);
     }
 
+    /* ── Mode selector ── */
+    .mode-selector {
+      display: flex;
+      background: rgba(255,255,255,0.15);
+      border-radius: 50px;
+      padding: 4px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(4px);
+    }
+
+    .mode-pill {
+      flex: 1;
+      padding: 9px 12px;
+      border: none;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      background: transparent;
+      color: rgba(255,255,255,0.7);
+      transition: background 0.2s, color 0.2s;
+      letter-spacing: 0.1px;
+    }
+
+    .mode-pill.active {
+      background: var(--white);
+      color: var(--red);
+    }
+
     /* ── Error ── */
     .error-msg {
       display: none;
@@ -409,6 +438,11 @@
     <h1 class="headline">Where did you stop?</h1>
     <p class="subline">Photo your current page. Amy will catch you up — nothing beyond where you are.</p>
 
+    <div class="mode-selector" id="mode-selector">
+      <button class="mode-pill active" data-mode="light">Previously on…</button>
+      <button class="mode-pill" data-mode="full">Full recap</button>
+    </div>
+
     <div class="upload-area" id="upload-area">
       <div class="upload-icon">📖</div>
       <div class="upload-label">Tap to photograph your page</div>
@@ -465,6 +499,15 @@
   let imageBase64 = null;
   let coverMode = false;
   let originalPageText = null;
+  let selectedMode = 'light';
+
+  document.querySelectorAll('.mode-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.mode-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      selectedMode = pill.dataset.mode;
+    });
+  });
 
   function resetUploadArea(isCover = false) {
     uploadArea.classList.remove('has-image');
@@ -611,7 +654,7 @@
       }
 
       setStep(2, set, 70);
-      const { summary } = await checkedFetch('/summarize', { text: textForSummary, book: identData.book });
+      const { summary } = await checkedFetch('/summarize', { text: textForSummary, book: identData.book, mode: selectedMode });
 
       fill.style.width = '100%';
       loadingStep.textContent = 'Done ✓';
