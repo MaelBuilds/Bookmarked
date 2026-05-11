@@ -485,7 +485,12 @@
   }
 
   function handleFile(file) {
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      errorMsg.textContent = "That's not an image. Please photograph your page and upload a photo.";
+      errorMsg.classList.add('visible');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => {
       const dataUrl = ev.target.result;
