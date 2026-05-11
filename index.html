@@ -463,14 +463,24 @@
   const errorMsg = document.getElementById('error-msg');
 
   let imageBase64 = null;
+  let coverMode = false;
+  let originalPageText = null;
 
-  function resetUploadArea() {
+  function resetUploadArea(isCover = false) {
     uploadArea.classList.remove('has-image');
-    uploadArea.innerHTML = `
-      <div class="upload-icon">📖</div>
-      <div class="upload-label">Tap to photograph your page</div>
-      <div class="upload-sublabel">or drop an image here</div>
-      <input type="file" accept="image/*" capture="environment" id="file-input" />`;
+    if (isCover) {
+      uploadArea.innerHTML = `
+        <div class="upload-icon">📕</div>
+        <div class="upload-label">Tap to photograph the cover or spine</div>
+        <div class="upload-sublabel">Amy will use it to identify your book</div>
+        <input type="file" accept="image/*" capture="environment" id="file-input" />`;
+    } else {
+      uploadArea.innerHTML = `
+        <div class="upload-icon">📖</div>
+        <div class="upload-label">Tap to photograph your page</div>
+        <div class="upload-sublabel">or drop an image here</div>
+        <input type="file" accept="image/*" capture="environment" id="file-input" />`;
+    }
     bindFileInput();
   }
 
@@ -519,6 +529,26 @@
     }, 300);
   }
 
+  function showError(msg) {
+    loadingEl.classList.remove('visible');
+    fill.style.width = '0%';
+    uploadCard.style.display = 'block';
+    errorMsg.textContent = msg;
+    errorMsg.classList.add('visible');
+  }
+
+  async function checkedFetch(url, body) {
+    const resp = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (resp.status === 429) throw { userMessage: "You've hit the daily limit. Try again tomorrow." };
+    if (resp.status === 400) throw { userMessage: "Couldn't read the image. Try a clearer photo." };
+    if (resp.status >= 500) throw { userMessage: "Server error. Try again in a moment." };
+    if (!resp.ok) throw { userMessage: "Something unexpected happened. Try again." };
+    return resp.json();
+  }
+
   submitBtn.addEventListener('click', async () => {
     if (!imageBase64) return;
     uploadCard.style.display = 'none';
@@ -533,38 +563,33 @@
 
     try {
       setStep(0, set, 5);
-      const ocrResp = await fetch('/ocr', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageBase64 })
-      });
-      const { text } = await ocrResp.json();
+      const { text: ocrText } = await checkedFetch('/ocr', { image: imageBase64 });
       fill.style.width = '33%';
 
+      const textForIdentify = coverMode ? ocrText : ocrText;
+      const textForSummary = coverMode ? originalPageText : ocrText;
+
       setStep(1, set, 38);
-      const identResp = await fetch('/identify', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
-      });
-      const identData = await identResp.json();
+      const identData = await checkedFetch('/identify', { text: textForIdentify });
       fill.style.width = '66%';
 
       if (identData.status === 'needs_cover') {
+        originalPageText = ocrText;
+        coverMode = true;
         loadingEl.classList.remove('visible');
         fill.style.width = '0%';
         uploadCard.style.display = 'block';
-        errorMsg.textContent = "Couldn't identify the book from this page. Try a photo of the cover or spine.";
-        errorMsg.classList.add('visible');
+        document.querySelector('.headline').textContent = "Which book is it?";
+        document.querySelector('.subline').textContent = "Amy couldn't identify it from the page. Photo the cover or spine and she'll take it from there.";
+        errorMsg.classList.remove('visible');
         submitBtn.disabled = true;
-        resetUploadArea();
+        submitBtn.textContent = "Try with cover →";
+        resetUploadArea(true);
         return;
       }
 
       setStep(2, set, 70);
-      const sumResp = await fetch('/summarize', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, book: identData.book })
-      });
-      const { summary } = await sumResp.json();
+      const { summary } = await checkedFetch('/summarize', { text: textForSummary, book: identData.book });
 
       fill.style.width = '100%';
       loadingStep.textContent = 'Done ✓';
@@ -580,11 +605,8 @@
       resultCard.classList.add('visible');
 
     } catch (err) {
-      loadingEl.classList.remove('visible');
-      fill.style.width = '0%';
-      uploadCard.style.display = 'block';
-      errorMsg.textContent = 'Something went wrong. Please try again.';
-      errorMsg.classList.add('visible');
+      const msg = err.userMessage || 'Connection issue. Check your internet and try again.';
+      showError(msg);
     }
   });
 
@@ -592,9 +614,14 @@
     resultCard.classList.remove('visible');
     uploadCard.style.display = 'block';
     submitBtn.disabled = true;
+    submitBtn.textContent = 'Catch me up →';
     imageBase64 = null;
+    coverMode = false;
+    originalPageText = null;
+    document.querySelector('.headline').textContent = 'Where did you stop?';
+    document.querySelector('.subline').textContent = 'Photo your current page. Amy will catch you up — nothing beyond where you are.';
     errorMsg.classList.remove('visible');
-    resetUploadArea();
+    resetUploadArea(false);
   });
 </script>
 
