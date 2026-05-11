@@ -484,10 +484,17 @@
     bindFileInput();
   }
 
+  const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB
+
   function handleFile(file) {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       errorMsg.textContent = "That's not an image. Please photograph your page and upload a photo.";
+      errorMsg.classList.add('visible');
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      errorMsg.textContent = "That photo is too large (max 5MB). Try a lower-resolution shot or compress it first.";
       errorMsg.classList.add('visible');
       return;
     }
@@ -499,6 +506,10 @@
       uploadArea.classList.add('has-image');
       submitBtn.disabled = false;
       errorMsg.classList.remove('visible');
+    };
+    reader.onerror = () => {
+      errorMsg.textContent = "Couldn't read that file. Try a different photo.";
+      errorMsg.classList.add('visible');
     };
     reader.readAsDataURL(file);
   }
@@ -547,6 +558,7 @@
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
+    if (resp.status === 413) throw { userMessage: "That photo is too large. Try a lower-resolution shot." };
     if (resp.status === 429) throw { userMessage: "You've hit the daily limit. Try again tomorrow." };
     if (resp.status === 400) throw { userMessage: "Couldn't read the image. Try a clearer photo." };
     if (resp.status >= 500) throw { userMessage: "Server error. Try again in a moment." };
@@ -571,7 +583,6 @@
       const { text: ocrText } = await checkedFetch('/ocr', { image: imageBase64 });
       fill.style.width = '33%';
 
-      const textForIdentify = coverMode ? ocrText : ocrText;
       const textForSummary = coverMode ? originalPageText : ocrText;
 
       setStep(1, set, 38);
@@ -579,17 +590,23 @@
       fill.style.width = '66%';
 
       if (identData.status === 'needs_cover') {
-        originalPageText = ocrText;
-        coverMode = true;
         loadingEl.classList.remove('visible');
         fill.style.width = '0%';
         uploadCard.style.display = 'block';
-        document.querySelector('.headline').textContent = "Which book is it?";
-        document.querySelector('.subline').textContent = "Amy couldn't identify it from the page. Photo the cover or spine and she'll take it from there.";
-        errorMsg.classList.remove('visible');
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Try with cover →";
-        resetUploadArea(true);
+        if (coverMode) {
+          // Cover also failed — ask for chapter manually
+          errorMsg.textContent = "Still couldn't identify the book. What chapter are you on? Type the title and chapter below and try again.";
+          errorMsg.classList.add('visible');
+        } else {
+          originalPageText = ocrText;
+          coverMode = true;
+          document.querySelector('.headline').textContent = "Which book is it?";
+          document.querySelector('.subline').textContent = "Amy couldn't identify it from the page. Photo the cover or spine and she'll take it from there.";
+          errorMsg.classList.remove('visible');
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Try with cover →";
+          resetUploadArea(true);
+        }
         return;
       }
 
