@@ -2,10 +2,19 @@ import base64
 import json
 import urllib.request
 from flask import Flask, request, jsonify, send_from_directory
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import os
 
 app = Flask(__name__, static_folder='.')
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB upload cap
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://"
+)
 
 def _load_token():
     env_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -33,6 +42,7 @@ def index():
     return send_from_directory('.', 'index.html')
 
 @app.route('/ocr', methods=['POST'])
+@limiter.limit("20 per day; 5 per minute")
 def ocr():
     image_data = request.json.get('image')
     if not image_data:
@@ -58,6 +68,7 @@ def ocr():
     return jsonify({"text": extracted})
 
 @app.route('/identify', methods=['POST'])
+@limiter.limit("20 per day; 5 per minute")
 def identify():
     text = request.json.get('text')
     book = call_gpt([
@@ -69,6 +80,7 @@ def identify():
     return jsonify({"status": "ok", "book": book})
 
 @app.route('/summarize', methods=['POST'])
+@limiter.limit("20 per day; 5 per minute")
 def summarize():
     text = request.json.get('text')
     book = request.json.get('book')
