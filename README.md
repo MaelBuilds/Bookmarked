@@ -1,4 +1,4 @@
-# Amy's Library 📔
+# Bookmarked 📔
 
 ---
 
@@ -8,14 +8,14 @@ So you Google it. And now you know how it ends.
 
 **There's a better way.**
 
-Photo your page. Amy reads where you stopped and catches you up — who's there, what's at stake, what just happened. Nothing beyond your page. No spoilers, no re-reading, no ruined endings.
+Photo your page. Bookmarked reads where you stopped and catches you up — who's there, what's at stake, what just happened. Nothing beyond your page. No spoilers, no re-reading, no ruined endings.
 
 ---
 
 ## How it works
 
 1. Take a photo of your current page
-2. Amy identifies the book and reads the passage
+2. The app identifies the book and reads the passage
 3. You get a spoiler-free catch-up, anchored to exactly where you stopped
 
 ---

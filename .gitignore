@@ -145,3 +145,6 @@ nohup.out
 *.jpg
 *.jpeg
 session-notes.md
+
+# Cursor project rules (keep local; do not commit or push)
+.cursor/rules/

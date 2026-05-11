@@ -104,7 +104,7 @@ A spoiler-free summary of a book, anchored to the exact point the reader is at â
 
 ## Name
 
-**Bookmarked** â€” working title. Fits the concept cleanly.
+**Bookmarked** is the official product name. It matches the public repo and the in-app title.
 
 ---
 

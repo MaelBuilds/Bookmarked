@@ -537,7 +537,7 @@
   <div class="upload-card" id="upload-card">
     <p class="card-eyebrow">✦ no spoilers, ever ✦</p>
     <h2 class="card-headline">Where did you stop?</h2>
-    <p class="card-subline">Photograph your current page. Amy reads where you left off and catches you up — nothing beyond your page.</p>
+    <p class="card-subline">Photograph your current page. Bookmarked reads where you left off and catches you up — nothing beyond your page.</p>
 
     <div class="mode-selector" id="mode-selector">
       <button class="mode-pill active" data-mode="light">✦ Previously on…</button>
@@ -602,7 +602,7 @@
         </g>
       </svg>
     </div>
-    <div class="loading-label">Amy is reading…</div>
+    <div class="loading-label">Reading your page…</div>
     <div class="loading-step" id="loading-step"></div>
     <div class="progress-track">
       <div class="progress-fill" id="progress-fill"></div>
@@ -672,7 +672,7 @@
           </svg>
         </div>
         <div class="upload-label">Photograph the cover or spine</div>
-        <div class="upload-sublabel">Amy will use it to identify your book</div>
+        <div class="upload-sublabel">We'll use it to identify your book</div>
         <input type="file" accept="image/*" capture="environment" id="file-input" />`;
     } else {
       uploadArea.innerHTML = `
@@ -781,7 +781,7 @@
     const sets = [
       ["Adjusting reading glasses…", "Scanning the page…", "Shushing the spoilers…"],
       ["Finding your bookmark…", "Cross-referencing the plot…", "Sealing the spoiler vault…"],
-      ["Amy's on it…", "Speed-reading the chapters…", "Building your memory palace…"],
+      ["On it…", "Speed-reading the chapters…", "Building your memory palace…"],
     ];
     const set = sets[Math.floor(Math.random() * sets.length)];
 
@@ -807,7 +807,7 @@
           originalPageText = ocrText;
           coverMode = true;
           document.querySelector('.card-headline').textContent = "Which book is it?";
-          document.querySelector('.card-subline').textContent = "Amy couldn't identify it from the page. Photo the cover or spine and she'll take it from there.";
+          document.querySelector('.card-subline').textContent = "We couldn't identify the book from the page. Photo the cover or spine and we'll take it from there.";
           errorMsg.classList.remove('visible');
           submitBtn.disabled = true;
           submitBtn.textContent = "Try with cover →";
@@ -847,7 +847,7 @@
     coverMode = false;
     originalPageText = null;
     document.querySelector('.card-headline').textContent = 'Where did you stop?';
-    document.querySelector('.card-subline').textContent = 'Photograph your current page. Amy reads where you left off and catches you up — nothing beyond your page.';
+    document.querySelector('.card-subline').textContent = 'Photograph your current page. Bookmarked reads where you left off and catches you up — nothing beyond your page.';
     errorMsg.classList.remove('visible');
     resetUploadArea(false);
   });
