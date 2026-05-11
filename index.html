@@ -3,167 +3,267 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Amy's Library</title>
+  <title>Bookmarked</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Lora:ital,wght@0,400;0,500;1,400&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --red: #F14D3A;
-      --red-dark: #D93B28;
-      --bg-gradient-top: #F14D3A;
-      --bg-gradient-bottom: #FFE7DD;
-      --white: #FFFFFF;
-      --text-dark: #292929;
-      --text-mid: #888888;
-      --radius: 20px;
+      --ink:        #2C1A0E;
+      --rust:       #B8431A;
+      --amber:      #D4831E;
+      --gold:       #C9963A;
+      --forest:     #4A6741;
+      --parchment:  #F5E8CC;
+      --cream:      #FDF6E8;
+      --paper:      #FAF2E0;
+      --warm-grey:  #8B7355;
+      --red-brown:  #7A2E1A;
     }
 
     body {
-      background: linear-gradient(160deg, var(--bg-gradient-top) 0%, var(--bg-gradient-bottom) 100%);
-      background-attachment: fixed;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      color: var(--white);
+      background-color: var(--parchment);
+      background-image:
+        url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      font-family: 'Lora', Georgia, serif;
+      color: var(--ink);
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* ── Scattered leaves decoration ── */
+    .leaves-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .leaves-bg svg {
+      position: absolute;
+      opacity: 0.18;
+    }
+
+    /* ── Page wrapper ── */
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 0 20px 60px;
+      min-height: 100vh;
     }
 
     /* ── Header ── */
-    header {
-      padding: 52px 24px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    .site-header {
+      text-align: center;
+      padding: 44px 0 8px;
       position: relative;
     }
 
-    .back-btn {
+    .header-deco {
       display: flex;
       align-items: center;
-      gap: 4px;
-      color: var(--white);
-      font-size: 16px;
-      font-weight: 500;
-      background: none;
-      border: none;
-      cursor: pointer;
-      opacity: 0.9;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 6px;
     }
 
-    .back-btn svg { width: 18px; height: 18px; stroke: white; fill: none; stroke-width: 2; }
-
-    .header-title {
-      font-size: 26px;
-      font-weight: 800;
-      color: var(--white);
-      letter-spacing: 0.2px;
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-
-    .header-icons {
-      display: flex;
-      gap: 18px;
-      align-items: center;
-    }
-
-    .header-icons svg {
-      width: 20px;
-      height: 20px;
-      stroke: white;
-      fill: none;
-      stroke-width: 1.5;
-      opacity: 0.9;
-    }
-
-    /* ── Main ── */
-    main {
+    .header-deco .line {
       flex: 1;
-      padding: 8px 20px 40px;
-      max-width: 480px;
-      margin: 0 auto;
-      width: 100%;
+      height: 1.5px;
+      background: linear-gradient(90deg, transparent, var(--amber), transparent);
+      max-width: 80px;
+    }
+
+    .site-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 42px;
+      font-weight: 900;
+      color: var(--ink);
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+
+    .site-title em {
+      font-style: italic;
+      color: var(--rust);
+    }
+
+    .site-tagline {
+      font-family: 'Caveat', cursive;
+      font-size: 18px;
+      color: var(--warm-grey);
+      margin-top: 4px;
+      letter-spacing: 0.3px;
+    }
+
+    .header-bookmark {
       display: flex;
-      flex-direction: column;
-      align-items: center;
+      justify-content: center;
+      margin-top: 10px;
     }
 
     /* ── Upload card ── */
     .upload-card {
-      width: 100%;
+      background: var(--cream);
+      border-radius: 4px;
+      border: 1.5px solid rgba(44,26,14,0.12);
+      padding: 30px 28px 24px;
+      margin-top: 28px;
+      position: relative;
+      box-shadow:
+        4px 4px 0 rgba(44,26,14,0.06),
+        0 8px 32px rgba(44,26,14,0.08);
     }
 
-    .eyebrow {
-      font-size: 12px;
-      font-weight: 600;
-      color: rgba(255,255,255,0.7);
-      text-transform: uppercase;
-      letter-spacing: 1.2px;
-      text-align: center;
-      margin-bottom: 8px;
+    /* Torn top edge effect */
+    .upload-card::before {
+      content: '';
+      position: absolute;
+      top: -6px;
+      left: 10px;
+      right: 10px;
+      height: 12px;
+      background: var(--cream);
+      border-radius: 2px;
+      clip-path: polygon(
+        0% 100%, 2% 20%, 4% 80%, 6% 10%, 8% 70%, 10% 30%, 12% 85%,
+        14% 15%, 16% 75%, 18% 25%, 20% 80%, 22% 20%, 24% 90%, 26% 10%,
+        28% 70%, 30% 30%, 32% 85%, 34% 5%, 36% 75%, 38% 25%, 40% 90%,
+        42% 15%, 44% 80%, 46% 20%, 48% 75%, 50% 10%, 52% 80%, 54% 20%,
+        56% 85%, 58% 10%, 60% 70%, 62% 30%, 64% 90%, 66% 15%, 68% 75%,
+        70% 25%, 72% 80%, 74% 20%, 76% 85%, 78% 5%, 80% 75%, 82% 25%,
+        84% 90%, 86% 10%, 88% 70%, 90% 30%, 92% 80%, 94% 20%, 96% 85%,
+        98% 15%, 100% 100%
+      );
     }
 
-    .headline {
-      font-size: 26px;
-      font-weight: 800;
-      color: var(--white);
+    .card-eyebrow {
+      font-family: 'Caveat', cursive;
+      font-size: 15px;
+      color: var(--warm-grey);
       text-align: center;
-      line-height: 1.25;
       margin-bottom: 6px;
     }
 
-    .subline {
-      font-size: 14px;
-      color: rgba(255,255,255,0.7);
+    .card-headline {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--ink);
       text-align: center;
-      margin-bottom: 28px;
-      line-height: 1.5;
+      line-height: 1.2;
+      margin-bottom: 8px;
     }
 
+    .card-subline {
+      font-size: 13.5px;
+      color: var(--warm-grey);
+      text-align: center;
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    /* ── Mode selector — bookmark tabs ── */
+    .mode-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+
+    .mode-pill {
+      padding: 8px 20px;
+      border: 1.5px solid rgba(44,26,14,0.2);
+      border-radius: 3px;
+      font-family: 'Caveat', cursive;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      background: transparent;
+      color: var(--warm-grey);
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .mode-pill::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 3px;
+      background: var(--rust);
+      border-radius: 2px;
+      transition: width 0.2s;
+    }
+
+    .mode-pill.active {
+      background: var(--rust);
+      color: var(--cream);
+      border-color: var(--rust);
+    }
+
+    .mode-pill.active::after { width: 0; }
+
+    .mode-pill:not(.active):hover {
+      border-color: var(--amber);
+      color: var(--amber);
+    }
+
+    /* ── Upload area ── */
     .upload-area {
-      background: rgba(255,255,255,0.18);
-      border: 2px dashed rgba(255,255,255,0.5);
-      border-radius: var(--radius);
-      padding: 36px 20px;
+      border: 2px dashed rgba(44,26,14,0.22);
+      border-radius: 4px;
+      padding: 32px 20px;
       text-align: center;
       cursor: pointer;
       transition: background 0.2s, border-color 0.2s;
       position: relative;
       overflow: hidden;
-      backdrop-filter: blur(6px);
+      background: var(--paper);
     }
 
     .upload-area:hover {
-      background: rgba(255,255,255,0.26);
-      border-color: rgba(255,255,255,0.8);
+      background: #F7EED6;
+      border-color: var(--amber);
     }
 
     .upload-area.has-image {
       padding: 0;
-      border: none;
+      border-style: solid;
+      border-color: rgba(44,26,14,0.15);
     }
 
     .upload-area img.preview {
       width: 100%;
-      border-radius: calc(var(--radius) - 2px);
+      border-radius: 2px;
       display: block;
-      max-height: 320px;
+      max-height: 300px;
       object-fit: cover;
     }
 
-    .upload-icon { font-size: 40px; margin-bottom: 12px; }
+    .upload-icon-wrap {
+      margin-bottom: 10px;
+    }
 
     .upload-label {
+      font-family: 'Playfair Display', Georgia, serif;
       font-size: 15px;
       font-weight: 700;
-      color: var(--white);
+      color: var(--ink);
       margin-bottom: 4px;
     }
 
     .upload-sublabel {
-      font-size: 12px;
-      color: rgba(255,255,255,0.65);
+      font-family: 'Caveat', cursive;
+      font-size: 15px;
+      color: var(--warm-grey);
     }
 
     input[type="file"] {
@@ -173,89 +273,63 @@
       cursor: pointer;
     }
 
-    /* ── Buttons ── */
-    .btn-primary {
-      width: 100%;
-      padding: 17px;
-      background: var(--white);
-      color: var(--red);
-      border: none;
-      border-radius: 50px;
-      font-size: 16px;
-      font-weight: 800;
-      cursor: pointer;
-      margin-top: 20px;
-      transition: opacity 0.2s, transform 0.1s;
-      letter-spacing: 0.1px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    }
-
-    .btn-primary:hover { opacity: 0.93; }
-    .btn-primary:active { transform: scale(0.98); }
-    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .btn-ghost {
-      width: 100%;
-      padding: 15px;
-      background: transparent;
-      color: var(--white);
-      border: 2px solid rgba(255,255,255,0.5);
-      border-radius: 50px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 12px;
-      transition: border-color 0.2s, background 0.2s;
-    }
-
-    .btn-ghost:hover {
-      border-color: var(--white);
-      background: rgba(255,255,255,0.08);
-    }
-
-    /* ── Mode selector ── */
-    .mode-selector {
-      display: flex;
-      background: rgba(255,255,255,0.15);
-      border-radius: 50px;
-      padding: 4px;
-      margin-bottom: 24px;
-      backdrop-filter: blur(4px);
-    }
-
-    .mode-pill {
-      flex: 1;
-      padding: 9px 12px;
-      border: none;
-      border-radius: 50px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      background: transparent;
-      color: rgba(255,255,255,0.7);
-      transition: background 0.2s, color 0.2s;
-      letter-spacing: 0.1px;
-    }
-
-    .mode-pill.active {
-      background: var(--white);
-      color: var(--red);
-    }
-
     /* ── Error ── */
     .error-msg {
       display: none;
-      background: rgba(255,255,255,0.2);
-      border-radius: 12px;
-      padding: 12px 16px;
+      background: #FFF0E8;
+      border: 1px solid rgba(184,67,26,0.3);
+      border-radius: 4px;
+      padding: 10px 14px;
       font-size: 13px;
-      color: var(--white);
-      margin-top: 14px;
-      font-weight: 500;
-      text-align: center;
-      backdrop-filter: blur(4px);
+      color: var(--rust);
+      margin-top: 12px;
+      font-family: 'Lora', serif;
+      font-style: italic;
     }
     .error-msg.visible { display: block; }
+
+    /* ── Primary button ── */
+    .btn-primary {
+      width: 100%;
+      padding: 16px;
+      background: var(--rust);
+      color: var(--cream);
+      border: none;
+      border-radius: 4px;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 18px;
+      transition: background 0.2s, transform 0.1s;
+      letter-spacing: 0.3px;
+      position: relative;
+      box-shadow: 3px 3px 0 rgba(44,26,14,0.2);
+    }
+
+    .btn-primary:hover { background: var(--red-brown); }
+    .btn-primary:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(44,26,14,0.2); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+    .btn-ghost {
+      width: 100%;
+      padding: 14px;
+      background: transparent;
+      color: var(--warm-grey);
+      border: 1.5px solid rgba(44,26,14,0.2);
+      border-radius: 4px;
+      font-family: 'Caveat', cursive;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 14px;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--amber);
+      color: var(--amber);
+    }
 
     /* ── Loading ── */
     .loading {
@@ -266,98 +340,31 @@
     }
     .loading.visible { display: block; }
 
-    .spinner { display: none; }
-
-    /* Flat book with flipping pages */
-    .book {
-      width: 90px;
-      height: 70px;
-      position: relative;
+    .loading-book {
       margin: 0 auto 24px;
     }
 
-    .book-body {
-      width: 90px;
-      height: 64px;
-      background: rgba(255,255,255,0.15);
-      border: 2px solid rgba(255,255,255,0.6);
-      border-radius: 3px 8px 8px 3px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    /* Spine line */
-    .book-body::before {
-      content: '';
-      position: absolute;
-      left: 10px;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background: rgba(255,255,255,0.4);
-    }
-
-    /* Flipping page */
-    .book-page {
-      position: absolute;
-      top: 6px;
-      left: 14px;
-      right: 6px;
-      bottom: 6px;
-      background: rgba(255,255,255,0.85);
-      border-radius: 1px 4px 4px 1px;
-      transform-origin: left center;
-      animation: page-flip 1.6s ease-in-out infinite;
-    }
-
-    .book-page:nth-child(2) {
-      background: rgba(255,255,255,0.6);
-      animation-delay: 0.2s;
-    }
-
-    .book-page:nth-child(3) {
-      background: rgba(255,255,255,0.35);
-      animation-delay: 0.4s;
-    }
-
-    /* Horizontal lines on page */
-    .book-page::before {
-      content: '';
-      position: absolute;
-      top: 8px; left: 8px; right: 8px;
-      height: 2px;
-      background: rgba(241,77,58,0.25);
-      box-shadow: 0 8px 0 rgba(241,77,58,0.2), 0 16px 0 rgba(241,77,58,0.15), 0 24px 0 rgba(241,77,58,0.1);
-      border-radius: 1px;
-    }
-
-    @keyframes page-flip {
-      0%   { transform: scaleX(1); }
-      35%  { transform: scaleX(-0.05); }
-      50%  { transform: scaleX(0); }
-      65%  { transform: scaleX(-0.05); }
-      100% { transform: scaleX(1); }
-    }
-
     .loading-label {
-      font-size: 17px;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 20px;
       font-weight: 700;
-      color: var(--white);
+      color: var(--ink);
       margin-bottom: 6px;
     }
 
     .loading-step {
-      font-size: 13px;
-      color: rgba(255,255,255,0.7);
+      font-family: 'Caveat', cursive;
+      font-size: 17px;
+      color: var(--warm-grey);
       margin-bottom: 24px;
-      min-height: 20px;
+      min-height: 24px;
       transition: opacity 0.3s;
     }
 
     .progress-track {
       width: 100%;
-      height: 6px;
-      background: rgba(255,255,255,0.2);
+      height: 5px;
+      background: rgba(44,26,14,0.1);
       border-radius: 99px;
       overflow: hidden;
     }
@@ -365,7 +372,7 @@
     .progress-fill {
       height: 100%;
       width: 0%;
-      background: var(--white);
+      background: var(--rust);
       border-radius: 99px;
       transition: width 0.6s ease;
     }
@@ -375,77 +382,184 @@
     .result.visible { display: block; }
 
     .result-sheet {
-      background: var(--white);
-      border-radius: var(--radius);
-      padding: 28px 24px;
-      box-shadow: 0 8px 40px rgba(241,77,58,0.2);
+      background: var(--cream);
+      border-radius: 4px;
+      border: 1.5px solid rgba(44,26,14,0.12);
+      padding: 30px 28px;
+      box-shadow:
+        4px 4px 0 rgba(44,26,14,0.06),
+        0 8px 32px rgba(44,26,14,0.08);
+      position: relative;
+    }
+
+    .result-sheet::before {
+      content: '';
+      position: absolute;
+      top: -6px;
+      left: 10px;
+      right: 10px;
+      height: 12px;
+      background: var(--cream);
+      border-radius: 2px;
+      clip-path: polygon(
+        0% 100%, 2% 20%, 4% 80%, 6% 10%, 8% 70%, 10% 30%, 12% 85%,
+        14% 15%, 16% 75%, 18% 25%, 20% 80%, 22% 20%, 24% 90%, 26% 10%,
+        28% 70%, 30% 30%, 32% 85%, 34% 5%, 36% 75%, 38% 25%, 40% 90%,
+        42% 15%, 44% 80%, 46% 20%, 48% 75%, 50% 10%, 52% 80%, 54% 20%,
+        56% 85%, 58% 10%, 60% 70%, 62% 30%, 64% 90%, 66% 15%, 68% 75%,
+        70% 25%, 72% 80%, 74% 20%, 76% 85%, 78% 5%, 80% 75%, 82% 25%,
+        84% 90%, 86% 10%, 88% 70%, 90% 30%, 92% 80%, 94% 20%, 96% 85%,
+        98% 15%, 100% 100%
+      );
     }
 
     .book-chip {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: #FFF0EE;
-      color: var(--red);
-      font-size: 11px;
-      font-weight: 800;
-      padding: 5px 12px;
-      border-radius: 20px;
+      background: #F2E8D4;
+      border: 1px solid rgba(44,26,14,0.15);
+      color: var(--warm-grey);
+      font-family: 'Caveat', cursive;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 3px;
       margin-bottom: 14px;
-      letter-spacing: 0.4px;
-      text-transform: uppercase;
     }
 
     .result-title {
+      font-family: 'Playfair Display', Georgia, serif;
       font-size: 22px;
-      font-weight: 800;
-      color: var(--text-dark);
-      margin-bottom: 18px;
-      line-height: 1.3;
+      font-weight: 700;
+      font-style: italic;
+      color: var(--ink);
+      margin-bottom: 6px;
     }
 
-    .divider {
-      height: 1px;
-      background: #F0EAE8;
+    .result-ornament {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       margin-bottom: 18px;
+    }
+
+    .result-ornament .orn-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--amber), transparent);
+    }
+
+    .result-ornament .orn-leaf {
+      color: var(--forest);
+      font-size: 14px;
     }
 
     .summary-text {
       font-size: 15px;
-      line-height: 1.8;
-      color: #3D2E2B;
+      line-height: 1.85;
+      color: var(--ink);
     }
 
     .summary-text p + p { margin-top: 14px; }
+
+    /* ── Footer deco ── */
+    .footer-deco {
+      text-align: center;
+      margin-top: 36px;
+      font-family: 'Caveat', cursive;
+      font-size: 14px;
+      color: var(--warm-grey);
+      opacity: 0.7;
+    }
   </style>
 </head>
 <body>
 
-<header>
-  <button class="back-btn" style="visibility:hidden">
-    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-    Back
-  </button>
-  <span class="header-title">📔 Amy's Library</span>
-  <div class="header-icons"></div>
-</header>
+<!-- Background scattered leaves -->
+<div class="leaves-bg">
+  <!-- Maple leaf top right -->
+  <svg width="120" height="120" style="top:-10px;right:-20px;transform:rotate(25deg)" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 5 C50 5 45 20 35 22 C25 24 15 18 15 18 C15 18 22 28 20 38 C18 48 8 52 8 52 C8 52 20 52 26 60 C32 68 28 80 28 80 C28 80 38 72 48 74 C50 74.5 50 74.5 50 74.5 C50 74.5 50 74.5 52 74 C62 72 72 80 72 80 C72 80 68 68 74 60 C80 52 92 52 92 52 C92 52 82 48 80 38 C78 28 85 18 85 18 C85 18 75 24 65 22 C55 20 50 5 50 5Z" fill="#B8431A" stroke="#7A2E1A" stroke-width="1.5"/>
+    <line x1="50" y1="5" x2="50" y2="80" stroke="#7A2E1A" stroke-width="1" stroke-dasharray="3,2"/>
+  </svg>
 
-<main>
+  <!-- Oak leaf bottom left -->
+  <svg width="100" height="110" style="bottom:80px;left:-15px;transform:rotate(-20deg)" viewBox="0 0 80 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M40 8 C38 14 32 16 28 14 C30 20 28 26 24 28 C28 30 30 36 28 40 C32 38 36 40 38 46 C36 50 32 52 28 52 C32 56 34 62 32 68 C36 66 40 68 40 74 C40 68 44 66 48 68 C46 62 48 56 52 52 C48 52 44 50 42 46 C44 40 48 38 52 40 C50 36 52 30 56 28 C52 26 50 20 52 14 C48 16 42 14 40 8Z" fill="#D4831E" stroke="#7A2E1A" stroke-width="1.5"/>
+    <line x1="40" y1="8" x2="40" y2="74" stroke="#7A2E1A" stroke-width="1"/>
+  </svg>
+
+  <!-- Small leaf top left -->
+  <svg width="60" height="60" style="top:120px;left:10px;transform:rotate(40deg)" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M30 5 C25 15 15 18 10 15 C12 25 8 32 5 35 C12 35 18 40 20 48 C25 42 30 42 30 42 C30 42 35 42 40 48 C42 40 48 35 55 35 C52 32 48 25 50 15 C45 18 35 15 30 5Z" fill="#C9963A" stroke="#7A2E1A" stroke-width="1.2"/>
+  </svg>
+
+  <!-- Acorn bottom right -->
+  <svg width="50" height="65" style="bottom:160px;right:15px;transform:rotate(-15deg)" viewBox="0 0 40 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="20" cy="20" rx="14" ry="8" fill="#7A4A1A" stroke="#2C1A0E" stroke-width="1.5"/>
+    <path d="M8 20 Q8 48 20 52 Q32 48 32 20Z" fill="#C9963A" stroke="#7A2E1A" stroke-width="1.5"/>
+    <line x1="20" y1="12" x2="22" y2="4" stroke="#4A6741" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+
+  <!-- Feather / quill right middle -->
+  <svg width="40" height="100" style="top:40%;right:5px;transform:rotate(10deg)" viewBox="0 0 30 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M15 2 C28 15 30 35 25 55 C22 65 18 75 15 88" stroke="#4A6741" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <path d="M15 2 C5 12 3 30 8 50 C10 60 12 72 15 88" stroke="#4A6741" stroke-width="1" fill="none" stroke-linecap="round"/>
+    <path d="M15 88 L14 82 M15 88 L16 82" stroke="#7A2E1A" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>
+
+  <!-- Large maple leaf bottom center -->
+  <svg width="90" height="90" style="bottom:20px;left:50%;transform:translateX(-50%) rotate(5deg)" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 5 C50 5 45 20 35 22 C25 24 15 18 15 18 C15 18 22 28 20 38 C18 48 8 52 8 52 C8 52 20 52 26 60 C32 68 28 80 28 80 C28 80 38 72 48 74 C50 74.5 50 74.5 50 74.5 C50 74.5 50 74.5 52 74 C62 72 72 80 72 80 C72 80 68 68 74 60 C80 52 92 52 92 52 C92 52 82 48 80 38 C78 28 85 18 85 18 C85 18 75 24 65 22 C55 20 50 5 50 5Z" fill="#4A6741" stroke="#2C1A0E" stroke-width="1.5"/>
+  </svg>
+</div>
+
+<div class="page">
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="header-deco">
+      <div class="line"></div>
+      <!-- Bookmark SVG -->
+      <svg width="22" height="30" viewBox="0 0 22 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 2 H20 V28 L11 22 L2 28 Z" fill="#B8431A" stroke="#7A2E1A" stroke-width="1.5" stroke-linejoin="round"/>
+        <line x1="6" y1="8" x2="16" y2="8" stroke="#FDF6E8" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="6" y1="12" x2="14" y2="12" stroke="#FDF6E8" stroke-width="1" stroke-linecap="round"/>
+      </svg>
+      <div class="line"></div>
+    </div>
+    <h1 class="site-title">Book<em>marked</em></h1>
+    <p class="site-tagline">your spoiler-free reading companion ✦</p>
+  </header>
 
   <!-- Upload view -->
   <div class="upload-card" id="upload-card">
-    <p class="eyebrow">Amy's Library · No spoilers</p>
-    <h1 class="headline">Where did you stop?</h1>
-    <p class="subline">Photo your current page. Amy will catch you up — nothing beyond where you are.</p>
+    <p class="card-eyebrow">✦ no spoilers, ever ✦</p>
+    <h2 class="card-headline">Where did you stop?</h2>
+    <p class="card-subline">Photograph your current page. Amy reads where you left off and catches you up — nothing beyond your page.</p>
 
     <div class="mode-selector" id="mode-selector">
-      <button class="mode-pill active" data-mode="light">Previously on…</button>
+      <button class="mode-pill active" data-mode="light">✦ Previously on…</button>
       <button class="mode-pill" data-mode="full">Full recap</button>
     </div>
 
     <div class="upload-area" id="upload-area">
-      <div class="upload-icon">📖</div>
-      <div class="upload-label">Tap to photograph your page</div>
+      <div class="upload-icon-wrap">
+        <!-- Hand-drawn open book SVG -->
+        <svg width="56" height="44" viewBox="0 0 56 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M28 38 C28 38 14 32 4 34 L4 8 C14 6 28 12 28 12" stroke="#7A2E1A" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <path d="M28 38 C28 38 42 32 52 34 L52 8 C42 6 28 12 28 12" stroke="#7A2E1A" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <path d="M28 12 L28 38" stroke="#C9963A" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <line x1="10" y1="16" x2="24" y2="14" stroke="#B8431A" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+          <line x1="10" y1="21" x2="24" y2="19" stroke="#B8431A" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+          <line x1="10" y1="26" x2="22" y2="24" stroke="#B8431A" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
+          <line x1="32" y1="14" x2="46" y2="16" stroke="#B8431A" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+          <line x1="32" y1="19" x2="46" y2="21" stroke="#B8431A" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+          <line x1="34" y1="24" x2="46" y2="26" stroke="#B8431A" stroke-width="1" stroke-linecap="round" opacity="0.4"/>
+        </svg>
+      </div>
+      <div class="upload-label">Photograph your current page</div>
       <div class="upload-sublabel">or drop an image here</div>
       <input type="file" accept="image/*" capture="environment" id="file-input" />
     </div>
@@ -456,14 +570,39 @@
 
   <!-- Loading -->
   <div class="loading" id="loading">
-    <div class="book">
-      <div class="book-body">
-        <div class="book-page"></div>
-        <div class="book-page"></div>
-        <div class="book-page"></div>
-      </div>
+    <div class="loading-book">
+      <!-- Animated open book -->
+      <svg width="80" height="64" viewBox="0 0 80 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <style>
+          .page-flip { transform-origin: 40px 32px; animation: flip 1.8s ease-in-out infinite; }
+          .page-flip-2 { transform-origin: 40px 32px; animation: flip 1.8s ease-in-out infinite 0.3s; opacity: 0.6; }
+          @keyframes flip {
+            0%, 100% { transform: scaleX(1); }
+            40% { transform: scaleX(0.05); }
+            60% { transform: scaleX(0.05); }
+          }
+          .leaf-fall { animation: fall 2.4s ease-in infinite; }
+          .leaf-fall-2 { animation: fall 2.4s ease-in infinite 0.8s; }
+          @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(40px) rotate(45deg); opacity: 0; }
+          }
+        </style>
+        <path d="M40 56 C40 56 18 48 6 50 L6 12 C18 10 40 18 40 18" stroke="#7A2E1A" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M40 56 C40 56 62 48 74 50 L74 12 C62 10 40 18 40 18" stroke="#7A2E1A" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <rect class="page-flip" x="28" y="18" width="12" height="38" rx="1" fill="#F5E8CC" opacity="0.9"/>
+        <rect class="page-flip-2" x="28" y="18" width="10" height="38" rx="1" fill="#F5E8CC" opacity="0.6"/>
+        <path d="M40 18 L40 56" stroke="#C9963A" stroke-width="1.5" stroke-dasharray="3,2"/>
+        <!-- Falling leaves -->
+        <g class="leaf-fall" transform="translate(20, 0)">
+          <path d="M55 4 C52 10 46 11 44 9 C45 14 43 18 40 20 C43 20 46 23 46 27 C48 24 51 23 53 26 C53 22 56 20 59 21 C57 18 56 14 57 10 C55 12 51 12 50 9 C53 9 55 4 55 4Z" fill="#B8431A" opacity="0.8"/>
+        </g>
+        <g class="leaf-fall-2" transform="translate(0, 0)">
+          <path d="M18 8 C16 13 11 14 9 12 C10 17 8 21 5 22 C8 23 10 26 10 30 C12 27 15 26 17 28 C17 24 20 22 22 23 C20 20 20 16 21 12 C19 14 15 14 14 11 C16 11 18 8 18 8Z" fill="#D4831E" opacity="0.7"/>
+        </g>
+      </svg>
     </div>
-    <div class="loading-label">One moment…</div>
+    <div class="loading-label">Amy is reading…</div>
     <div class="loading-step" id="loading-step"></div>
     <div class="progress-track">
       <div class="progress-fill" id="progress-fill"></div>
@@ -475,31 +614,41 @@
     <div class="result-sheet">
       <div class="book-chip">📔 <span id="book-title"></span></div>
       <div class="result-title">Here's where you left off</div>
-      <div class="divider"></div>
+      <div class="result-ornament">
+        <div class="orn-line"></div>
+        <span class="orn-leaf">🍂</span>
+        <div class="orn-line" style="background:linear-gradient(90deg,transparent,var(--amber))"></div>
+      </div>
       <div class="summary-text" id="summary-body"></div>
     </div>
     <button class="btn-ghost" id="try-again">← Try another page</button>
   </div>
 
-</main>
+  <div class="footer-deco">
+    crafted for readers who wander ✦ come back often
+  </div>
+
+</div>
 
 <script>
-  const uploadArea = document.getElementById('upload-area');
-  const submitBtn = document.getElementById('submit-btn');
-  const uploadCard = document.getElementById('upload-card');
-  const loadingEl = document.getElementById('loading');
-  const loadingStep = document.getElementById('loading-step');
-  const fill = document.getElementById('progress-fill');
-  const resultCard = document.getElementById('result-card');
-  const bookTitle = document.getElementById('book-title');
-  const summaryBody = document.getElementById('summary-body');
-  const tryAgain = document.getElementById('try-again');
-  const errorMsg = document.getElementById('error-msg');
+  const uploadArea   = document.getElementById('upload-area');
+  const submitBtn    = document.getElementById('submit-btn');
+  const uploadCard   = document.getElementById('upload-card');
+  const loadingEl    = document.getElementById('loading');
+  const loadingStep  = document.getElementById('loading-step');
+  const fill         = document.getElementById('progress-fill');
+  const resultCard   = document.getElementById('result-card');
+  const bookTitle    = document.getElementById('book-title');
+  const summaryBody  = document.getElementById('summary-body');
+  const tryAgain     = document.getElementById('try-again');
+  const errorMsg     = document.getElementById('error-msg');
 
-  let imageBase64 = null;
-  let coverMode = false;
+  let imageBase64    = null;
+  let coverMode      = false;
   let originalPageText = null;
-  let selectedMode = 'light';
+  let selectedMode   = 'light';
+
+  const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
   document.querySelectorAll('.mode-pill').forEach(pill => {
     pill.addEventListener('click', () => {
@@ -513,21 +662,37 @@
     uploadArea.classList.remove('has-image');
     if (isCover) {
       uploadArea.innerHTML = `
-        <div class="upload-icon">📕</div>
-        <div class="upload-label">Tap to photograph the cover or spine</div>
+        <div class="upload-icon-wrap">
+          <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="8" y="4" width="30" height="42" rx="3" fill="#F5E8CC" stroke="#7A2E1A" stroke-width="2"/>
+            <rect x="8" y="4" width="8" height="42" rx="2" fill="#C9963A" stroke="#7A2E1A" stroke-width="1.5"/>
+            <line x1="20" y1="16" x2="34" y2="16" stroke="#7A2E1A" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="20" y1="22" x2="34" y2="22" stroke="#7A2E1A" stroke-width="1" stroke-linecap="round"/>
+            <line x1="20" y1="28" x2="30" y2="28" stroke="#7A2E1A" stroke-width="1" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="upload-label">Photograph the cover or spine</div>
         <div class="upload-sublabel">Amy will use it to identify your book</div>
         <input type="file" accept="image/*" capture="environment" id="file-input" />`;
     } else {
       uploadArea.innerHTML = `
-        <div class="upload-icon">📖</div>
-        <div class="upload-label">Tap to photograph your page</div>
+        <div class="upload-icon-wrap">
+          <svg width="56" height="44" viewBox="0 0 56 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M28 38 C28 38 14 32 4 34 L4 8 C14 6 28 12 28 12" stroke="#7A2E1A" stroke-width="2" stroke-linecap="round" fill="none"/>
+            <path d="M28 38 C28 38 42 32 52 34 L52 8 C42 6 28 12 28 12" stroke="#7A2E1A" stroke-width="2" stroke-linecap="round" fill="none"/>
+            <path d="M28 12 L28 38" stroke="#C9963A" stroke-width="1.5" stroke-dasharray="3,2"/>
+            <line x1="10" y1="16" x2="24" y2="14" stroke="#B8431A" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+            <line x1="10" y1="21" x2="24" y2="19" stroke="#B8431A" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+            <line x1="32" y1="14" x2="46" y2="16" stroke="#B8431A" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+            <line x1="32" y1="19" x2="46" y2="21" stroke="#B8431A" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+          </svg>
+        </div>
+        <div class="upload-label">Photograph your current page</div>
         <div class="upload-sublabel">or drop an image here</div>
         <input type="file" accept="image/*" capture="environment" id="file-input" />`;
     }
     bindFileInput();
   }
-
-  const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB
 
   function handleFile(file) {
     if (!file) return;
@@ -563,10 +728,9 @@
     input.addEventListener('change', (e) => handleFile(e.target.files[0]));
   }
 
-  // Drag and drop
   uploadArea.addEventListener('dragover', (e) => {
     e.preventDefault();
-    uploadArea.style.background = 'rgba(255,255,255,0.3)';
+    uploadArea.style.background = '#F7EED6';
   });
   uploadArea.addEventListener('dragleave', () => {
     uploadArea.style.background = '';
@@ -605,7 +769,7 @@
     if (resp.status === 429) throw { userMessage: "You've hit the daily limit. Try again tomorrow." };
     if (resp.status === 400) throw { userMessage: "Couldn't read the image. Try a clearer photo." };
     if (resp.status >= 500) throw { userMessage: "Server error. Try again in a moment." };
-    if (!resp.ok) throw { userMessage: "Something unexpected happened. Try again." };
+    if (!resp.ok)            throw { userMessage: "Something unexpected happened. Try again." };
     return resp.json();
   }
 
@@ -629,7 +793,7 @@
       const textForSummary = coverMode ? originalPageText : ocrText;
 
       setStep(1, set, 38);
-      const identData = await checkedFetch('/identify', { text: textForIdentify });
+      const identData = await checkedFetch('/identify', { text: ocrText });
       fill.style.width = '66%';
 
       if (identData.status === 'needs_cover') {
@@ -637,14 +801,13 @@
         fill.style.width = '0%';
         uploadCard.style.display = 'block';
         if (coverMode) {
-          // Cover also failed — ask for chapter manually
           errorMsg.textContent = "Still couldn't identify the book. What chapter are you on? Type the title and chapter below and try again.";
           errorMsg.classList.add('visible');
         } else {
           originalPageText = ocrText;
           coverMode = true;
-          document.querySelector('.headline').textContent = "Which book is it?";
-          document.querySelector('.subline').textContent = "Amy couldn't identify it from the page. Photo the cover or spine and she'll take it from there.";
+          document.querySelector('.card-headline').textContent = "Which book is it?";
+          document.querySelector('.card-subline').textContent = "Amy couldn't identify it from the page. Photo the cover or spine and she'll take it from there.";
           errorMsg.classList.remove('visible');
           submitBtn.disabled = true;
           submitBtn.textContent = "Try with cover →";
@@ -657,7 +820,7 @@
       const { summary } = await checkedFetch('/summarize', { text: textForSummary, book: identData.book, mode: selectedMode });
 
       fill.style.width = '100%';
-      loadingStep.textContent = 'Done ✓';
+      loadingStep.textContent = 'Done ✦';
       await new Promise(r => setTimeout(r, 500));
 
       loadingEl.classList.remove('visible');
@@ -683,8 +846,8 @@
     imageBase64 = null;
     coverMode = false;
     originalPageText = null;
-    document.querySelector('.headline').textContent = 'Where did you stop?';
-    document.querySelector('.subline').textContent = 'Photo your current page. Amy will catch you up — nothing beyond where you are.';
+    document.querySelector('.card-headline').textContent = 'Where did you stop?';
+    document.querySelector('.card-subline').textContent = 'Photograph your current page. Amy reads where you left off and catches you up — nothing beyond your page.';
     errorMsg.classList.remove('visible');
     resetUploadArea(false);
   });
