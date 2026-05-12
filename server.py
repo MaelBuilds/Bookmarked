@@ -1,6 +1,7 @@
 import base64
 import json
 import urllib.request
+import urllib.error
 from flask import Flask, request, jsonify, send_from_directory
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -32,12 +33,38 @@ def _load_token():
 _ENV_TOKEN = _load_token()
 API_URL = "https://models.inference.ai.azure.com/chat/completions"
 
+class GPTError(Exception):
+    """Raised when the LLM call fails for any reason."""
+    def __init__(self, message, status_code=502):
+        super().__init__(message)
+        self.status_code = status_code
+
 def call_gpt(messages):
     payload = json.dumps({"model": "gpt-4o-mini", "messages": messages}).encode()
     req = urllib.request.Request(API_URL, data=payload,
         headers={"Authorization": f"Bearer {_ENV_TOKEN}", "Content-Type": "application/json"})
-    with urllib.request.urlopen(req) as resp:
-        return json.load(resp)["choices"][0]["message"]["content"]
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = json.load(resp)
+    except urllib.error.HTTPError as e:
+        code_map = {
+            401: (401, "Invalid API token"),
+            429: (429, "AI service rate limit reached — try again in a minute"),
+            500: (502, "AI service is temporarily down"),
+            503: (502, "AI service is temporarily unavailable"),
+        }
+        sc, msg = code_map.get(e.code, (502, f"AI service error (HTTP {e.code})"))
+        raise GPTError(msg, sc)
+    except (urllib.error.URLError, TimeoutError, OSError):
+        raise GPTError("Could not reach AI service — check your connection", 502)
+    try:
+        return body["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        raise GPTError("AI service returned an unexpected response", 502)
+
+@app.errorhandler(GPTError)
+def handle_gpt_error(e):
+    return jsonify({"error": str(e)}), e.status_code
 
 @app.route('/')
 def index():
@@ -72,7 +99,9 @@ def ocr():
 @app.route('/identify', methods=['POST'])
 @limiter.limit("20 per day; 5 per minute")
 def identify():
-    text = request.json.get('text')
+    text = request.json.get('text') if request.json else None
+    if not text or not text.strip():
+        return jsonify({"error": "No text provided"}), 400
     book = call_gpt([
         {"role": "system", "content": "Identify the book and author from this text excerpt. Reply with only: Title by Author. If you cannot identify it, reply with only: UNKNOWN"},
         {"role": "user", "content": text}
@@ -112,8 +141,12 @@ Rules:
 @app.route('/summarize', methods=['POST'])
 @limiter.limit("20 per day; 5 per minute")
 def summarize():
-    text = request.json.get('text')
-    book = request.json.get('book')
+    text = request.json.get('text') if request.json else None
+    book = request.json.get('book') if request.json else None
+    if not text or not text.strip():
+        return jsonify({"error": "No text provided"}), 400
+    if not book or not book.strip():
+        return jsonify({"error": "No book provided"}), 400
     mode = request.json.get('mode', 'light')
     prompt = PROMPT_FULL if mode == 'full' else PROMPT_LIGHT
     summary = call_gpt([
