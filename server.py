@@ -17,16 +17,18 @@ limiter = Limiter(
 )
 
 def _load_token():
+    token = os.environ.get('GITHUB_TOKEN')
+    if token:
+        return token
     env_path = os.path.join(os.path.dirname(__file__), '.env')
-    if not os.path.exists(env_path):
-        raise RuntimeError(".env file not found — copy .env.example to .env and add your token")
-    for line in open(env_path).read().splitlines():
-        line = line.strip()
-        if line and not line.startswith('#') and '=' in line:
-            key, _, val = line.partition('=')
-            if key.strip() == 'GITHUB_TOKEN':
-                return val.strip()
-    raise RuntimeError("GITHUB_TOKEN not found in .env")
+    if os.path.exists(env_path):
+        for line in open(env_path).read().splitlines():
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, _, val = line.partition('=')
+                if key.strip() == 'GITHUB_TOKEN':
+                    return val.strip()
+    raise RuntimeError("GITHUB_TOKEN not set -- add it to your environment or .env file")
 _ENV_TOKEN = _load_token()
 API_URL = "https://models.inference.ai.azure.com/chat/completions"
 
@@ -122,4 +124,5 @@ def summarize():
 
 if __name__ == '__main__':
     debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
-    app.run(debug=debug, port=3000)
+    port = int(os.environ.get('PORT', '3000'))
+    app.run(debug=debug, host='0.0.0.0', port=port)
