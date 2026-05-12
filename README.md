@@ -35,7 +35,7 @@ Photo your page. Bookmarked reads where you stopped and catches you up — who's
 ```bash
 git clone https://github.com/MaelBuilds/Bookmarked.git
 cd Bookmarked
-pip3 install flask flask-cors requests python-dotenv
+pip3 install -r requirements.txt
 cp .env.example .env
 # Edit .env and add your GitHub token
 python3 server.py
