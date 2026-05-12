@@ -25,6 +25,7 @@ nohup.out
 *.png
 *.jpg
 *.jpeg
+!assets/bg.jpeg
 
 # IDE / editor
 .vscode-test
