@@ -70,6 +70,10 @@ def handle_gpt_error(e):
 def index():
     return send_from_directory('.', 'index.html')
 
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    return send_from_directory('assets', filename)
+
 @app.route('/ocr', methods=['POST'])
 @limiter.limit("20 per day; 5 per minute")
 def ocr():
