@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { modePill, btnPrimary } from '../../styled-system/recipes'
 import type { SummaryMode } from '../types'
 import {
@@ -50,12 +51,13 @@ export function UploadCard({
   onFile,
   onSubmit,
 }: UploadCardProps) {
+  const { t } = useTranslation('flows')
   const uploadAreaClass =
     previewUrl != null ? `${uploadAreaBase} ${uploadAreaHasImage}` : uploadAreaBase
 
   return (
     <div className={`${uploadCard} card-torn-top`}>
-      <p className={cardEyebrow}>✦ no spoilers, ever ✦</p>
+      <p className={cardEyebrow}>{t('upload.eyebrow')}</p>
       <h2 className={cardHeadline}>{headline}</h2>
       <p className={cardSubline}>{subline}</p>
 
@@ -65,14 +67,14 @@ export function UploadCard({
           className={modePill({ active: selectedMode === 'light' })}
           onClick={() => onModeChange('light')}
         >
-          ✦ Previously on…
+          {t('upload.mode.light')}
         </button>
         <button
           type="button"
           className={modePill({ active: selectedMode === 'full' })}
           onClick={() => onModeChange('full')}
         >
-          Full recap
+          {t('upload.mode.full')}
         </button>
       </div>
 
@@ -95,22 +97,22 @@ export function UploadCard({
         }}
       >
         {previewUrl ? (
-          <img className={previewImg} src={previewUrl} alt="Page preview" />
+          <img className={previewImg} src={previewUrl} alt={t('upload.previewAlt')} />
         ) : coverMode ? (
           <>
             <div className={uploadIconWrap}>
               <CoverPromptSvg />
             </div>
-            <div className={uploadLabel}>Photograph the cover or spine</div>
-            <div className={uploadSublabel}>We&apos;ll use it to identify your book</div>
+            <div className={uploadLabel}>{t('upload.label.cover')}</div>
+            <div className={uploadSublabel}>{t('upload.sublabel.cover')}</div>
           </>
         ) : (
           <>
             <div className={uploadIconWrap}>
               <OpenBookSvg />
             </div>
-            <div className={uploadLabel}>Photograph your current page</div>
-            <div className={uploadSublabel}>or drop an image here</div>
+            <div className={uploadLabel}>{t('upload.label.page')}</div>
+            <div className={uploadSublabel}>{t('upload.sublabel.page')}</div>
           </>
         )}
         <input

@@ -1,0 +1,43 @@
+{
+  "upload": {
+    "eyebrow": "✦ jamais de spoilers ✦",
+    "headline": {
+      "default": "Où en étiez-vous ?",
+      "cover": "Quel livre est-ce ?"
+    },
+    "subline": {
+      "default": "Photographiez votre page actuelle. Bookmarked lit où vous vous êtes arrêté et vous remet dans le bain — rien au-delà de votre page.",
+      "cover": "On n'a pas pu identifier le livre à partir de la page. Photographiez la couverture ou la tranche."
+    },
+    "submit": {
+      "default": "Rattrapez-moi →",
+      "cover": "Essayer avec la couverture →"
+    },
+    "mode": {
+      "light": "✦ Précédemment…",
+      "full": "Récap complet"
+    },
+    "label": {
+      "page": "Photographiez votre page actuelle",
+      "cover": "Photographiez la couverture ou la tranche"
+    },
+    "sublabel": {
+      "page": "ou déposez une image ici",
+      "cover": "On s'en servira pour identifier votre livre"
+    },
+    "previewAlt": "Aperçu de la page"
+  },
+  "result": {
+    "title": "Voici où vous en étiez",
+    "tryAgain": "← Autre page"
+  },
+  "loading": {
+    "label": "Lecture de votre page…",
+    "done": "Terminé ✦",
+    "sets": [
+      ["Ajustement des lunettes…", "Scan de la page…", "Étouffement des spoilers…"],
+      ["Recherche du marque-page…", "Recoupement de l'intrigue…", "Scellement du coffre aux spoilers…"],
+      ["C'est parti…", "Lecture express des chapitres…", "Construction du palais des souvenirs…"]
+    ]
+  }
+}

@@ -61,7 +61,9 @@ class TestOCRValidation:
     def test_missing_image(self, client):
         r = client.post("/ocr", json={})
         assert r.status_code == 400
-        assert "No image" in r.get_json()["error"]
+        data = r.get_json()
+        assert data["code"] == "no_image"
+        assert "No image" in data["error"]
 
     def test_empty_image(self, client):
         r = client.post("/ocr", json={"image": ""})
@@ -76,7 +78,9 @@ class TestIdentifyValidation:
     def test_missing_text(self, client):
         r = client.post("/identify", json={})
         assert r.status_code == 400
-        assert "No text" in r.get_json()["error"]
+        data = r.get_json()
+        assert data["code"] == "no_text"
+        assert "No text" in data["error"]
 
     def test_empty_text(self, client):
         r = client.post("/identify", json={"text": ""})
@@ -222,41 +226,86 @@ class TestPromptConstruction:
     """Verify the correct system prompt is sent for each summary mode."""
 
     def test_light_mode_uses_light_prompt(self, client):
-        with _mock_gpt("summary") as mock:
-            client.post("/summarize", json={
-                "text": "passage", "book": "Dune by Frank Herbert", "mode": "light"
-            })
-        messages = mock.call_args[0][0]
-        system = messages[0]["content"]
-        assert "4-6 sentences" in system
-        assert "three sections" not in system
+        with patch("server.detect_passage_language", return_value="en"):
+            with _mock_gpt("summary") as mock:
+                client.post("/summarize", json={
+                    "text": "passage", "book": "Dune by Frank Herbert", "mode": "light"
+                })
+            messages = mock.call_args[0][0]
+            system = messages[0]["content"]
+            assert "4-6 sentences" in system
+            assert "three sections" not in system
+            assert "OUTPUT LANGUAGE: English only" in system
 
     def test_full_mode_uses_full_prompt(self, client):
-        with _mock_gpt("summary") as mock:
-            client.post("/summarize", json={
-                "text": "passage", "book": "Dune by Frank Herbert", "mode": "full"
-            })
-        messages = mock.call_args[0][0]
-        system = messages[0]["content"]
-        assert "three sections" in system
-        assert "4-6 sentences" not in system
+        with patch("server.detect_passage_language", return_value="en"):
+            with _mock_gpt("summary") as mock:
+                client.post("/summarize", json={
+                    "text": "passage", "book": "Dune by Frank Herbert", "mode": "full"
+                })
+            messages = mock.call_args[0][0]
+            system = messages[0]["content"]
+            assert "three sections" in system
+            assert "4-6 sentences" not in system
 
     def test_default_mode_is_light(self, client):
-        with _mock_gpt("summary") as mock:
-            client.post("/summarize", json={
-                "text": "passage", "book": "Dune by Frank Herbert"
-            })
-        messages = mock.call_args[0][0]
-        assert "4-6 sentences" in messages[0]["content"]
+        with patch("server.detect_passage_language", return_value="en"):
+            with _mock_gpt("summary") as mock:
+                client.post("/summarize", json={
+                    "text": "passage", "book": "Dune by Frank Herbert"
+                })
+            messages = mock.call_args[0][0]
+            assert "4-6 sentences" in messages[0]["content"]
 
     def test_user_message_includes_book_and_passage(self, client):
-        with _mock_gpt("summary") as mock:
+        with patch("server.detect_passage_language", return_value="en"):
+            with _mock_gpt("summary") as mock:
+                client.post("/summarize", json={
+                    "text": "the passage text", "book": "Dune by Frank Herbert"
+                })
+            user_msg = mock.call_args[0][0][1]["content"]
+            assert "Dune by Frank Herbert" in user_msg
+            assert "the passage text" in user_msg
+
+    def test_ui_locale_fallback_when_language_unknown(self, client):
+        with patch("server.detect_passage_language", return_value=None):
+            with _mock_gpt("summary") as mock:
+                client.post("/summarize", json={
+                    "text": "passage", "book": "Dune", "ui_locale": "fr"
+                })
+            system = mock.call_args[0][0][0]["content"]
+            user = mock.call_args[0][0][1]["content"]
+            assert "OUTPUT LANGUAGE: French only" in system
+            assert "Où en suis-je" in user
+
+    def test_ui_locale_fr_forces_french_even_for_english_passage(self, client):
+        english = (
+            "Jean Valjean knelt in the shadows. He wept for what he had done. "
+            "The bishop had shown him mercy, and he could not forget it."
+        )
+        with _mock_gpt("Résumé.") as mock:
             client.post("/summarize", json={
-                "text": "the passage text", "book": "Dune by Frank Herbert"
+                "text": english, "book": "Les Misérables", "ui_locale": "fr"
             })
-        user_msg = mock.call_args[0][0][1]["content"]
-        assert "Dune by Frank Herbert" in user_msg
-        assert "the passage text" in user_msg
+        system = mock.call_args[0][0][0]["content"]
+        user = mock.call_args[0][0][1]["content"]
+        assert "OUTPUT LANGUAGE: French only" in system
+        assert "Où en suis-je" in user
+
+    def test_summarize_response_includes_output_language_and_version(self, client):
+        with patch("server.detect_passage_language", return_value="en"):
+            with _mock_gpt("summary"):
+                r = client.post("/summarize", json={
+                    "text": "passage", "book": "Dune", "ui_locale": "fr"
+                })
+        data = r.get_json()
+        assert data["output_language"] == "fr"
+        assert data["api_version"] == "multilingual-2"
+
+    def test_parse_lang_code_handles_verbose_model_reply(self):
+        from server import parse_lang_code
+        assert parse_lang_code("The language is French (fr)") == "fr"
+        assert parse_lang_code("english") == "en"
 
     def test_spoiler_wall_in_both_prompts(self):
         from server import PROMPT_LIGHT, PROMPT_FULL
@@ -315,6 +364,21 @@ class TestLoadToken:
 # ===========================================================================
 # SHOULD-HAVE: Happy paths (routes return expected shapes)
 # ===========================================================================
+
+class TestHealth:
+    def test_health_html_for_browsers(self, client):
+        r = client.get("/health")
+        assert r.status_code == 200
+        assert b"multilingual-2" in r.data
+        assert b"text/html" in r.content_type.encode()
+
+    def test_health_json_with_format_param(self, client):
+        r = client.get("/health?format=json")
+        assert r.status_code == 200
+        data = r.get_json()
+        assert data["api_version"] == "multilingual-2"
+        assert "output_language" in data["summarize_response_fields"]
+
 
 class TestHappyPaths:
     def test_identify_found(self, client):

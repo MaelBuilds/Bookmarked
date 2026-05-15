@@ -1,0 +1,32 @@
+{
+  "tagline": "your spoiler-free reading companion ✦",
+  "footer": {
+    "line": "crafted for readers who wander ✦ come back often",
+    "createdBy": "Created by"
+  },
+  "language": {
+    "ariaLabel": "Choose language",
+    "optionEn": "English",
+    "optionFr": "French"
+  },
+  "errors": {
+    "not_image": "That's not an image. Please photograph your page and upload a photo.",
+    "file_too_large": "That photo is too large (max 5MB). Try a lower-resolution shot or compress it first.",
+    "file_read_error": "Couldn't read that file. Try a different photo.",
+    "chapter_fallback": "Still couldn't identify the book. What chapter are you on? Type the title and chapter below and try again.",
+    "connection": "Connection issue. Check your internet and try again.",
+    "server_unreachable": "Cannot reach the server. Start Flask (python server.py) and keep it running on port 3000.",
+    "payload_too_large": "That photo is too large. Try a lower-resolution shot.",
+    "rate_limit": "You've hit the daily limit. Try again tomorrow.",
+    "bad_image": "Couldn't read the image. Try a clearer photo.",
+    "server_error": "Server error. Try again in a moment.",
+    "unexpected": "Something unexpected happened. Try again.",
+    "no_image": "No image was sent. Try uploading again.",
+    "invalid_image": "Couldn't read the image. Try a clearer photo.",
+    "no_text": "No text was provided.",
+    "no_book": "Book information is missing.",
+    "gpt_unavailable": "The reading service is temporarily unavailable. Try again in a moment.",
+    "gpt_rate_limit": "Too many requests — wait a minute and try again.",
+    "invalid_token": "Service configuration error. Try again later."
+  }
+}

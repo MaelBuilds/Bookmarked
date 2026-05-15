@@ -1,7 +1,8 @@
-import { useCallback, useRef, useState } from 'react'
-import { footerDeco, page } from './styles/appStyles'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { page } from './styles/appStyles'
+import { SiteFooter } from './components/SiteFooter'
 import { MAX_FILE_BYTES } from './constants'
-import { LOADING_SETS } from './constants/loadingSets'
 import {
   BookmarkedFetchError,
   postIdentify,
@@ -9,18 +10,20 @@ import {
   postSummarize,
 } from './api/bookmarked'
 import type { SummaryMode } from './types'
+import { setAppLocale } from './i18n'
+import type { AppLocale } from './i18n/locale'
+import { initialLocale, writeStoredLocale } from './i18n/locale'
 import { LoadingView } from './components/LoadingView'
 import { ResultView } from './components/ResultView'
 import { SiteHeader } from './components/SiteHeader'
 import { UploadCard } from './components/UploadCard'
+import { LanguageSelector } from './components/LanguageSelector'
 
 type Phase = 'upload' | 'loading' | 'result'
 
-const DEFAULT_HEADLINE = 'Where did you stop?'
-const DEFAULT_SUBLINE =
-  'Photograph your current page. Bookmarked reads where you left off and catches you up — nothing beyond your page.'
-
 export function App() {
+  const { t, i18n } = useTranslation(['flows', 'common'])
+  const [locale, setLocale] = useState<AppLocale>(initialLocale)
   const [phase, setPhase] = useState<Phase>('upload')
   const [selectedMode, setSelectedMode] = useState<SummaryMode>('light')
   const [coverMode, setCoverMode] = useState(false)
@@ -32,14 +35,31 @@ export function App() {
   const [loadingStepText, setLoadingStepText] = useState('')
   const [loadingStepOpacity, setLoadingStepOpacity] = useState(1)
   const [progressPct, setProgressPct] = useState(0)
-  const [headline, setHeadline] = useState(DEFAULT_HEADLINE)
-  const [subline, setSubline] = useState(DEFAULT_SUBLINE)
-  const [submitLabel, setSubmitLabel] = useState('Catch me up →')
   const [bookTitle, setBookTitle] = useState('')
   const [summaryParagraphs, setSummaryParagraphs] = useState<string[]>([])
   const [dragHighlight, setDragHighlight] = useState(false)
 
   const stepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const uploadCopy = useMemo(() => {
+    const variant = coverMode ? 'cover' : 'default'
+    return {
+      headline: t(`upload.headline.${variant}`, { ns: 'flows' }),
+      subline: t(`upload.subline.${variant}`, { ns: 'flows' }),
+      submitLabel: t(`upload.submit.${variant}`, { ns: 'flows' }),
+    }
+  }, [coverMode, t, i18n.language])
+
+  const loadingSets = useMemo(
+    () => t('loading.sets', { ns: 'flows', returnObjects: true }) as string[][],
+    [t, i18n.language],
+  )
+
+  const onLocaleChange = useCallback((lng: AppLocale) => {
+    void setAppLocale(lng)
+    writeStoredLocale(lng)
+    setLocale(lng)
+  }, [])
 
   const setStep = useCallback((index: number, set: string[], pct: number) => {
     setLoadingStepOpacity(0)
@@ -57,46 +77,46 @@ export function App() {
     setErrorText(msg)
   }, [])
 
-  const resetUploadArea = useCallback((isCover: boolean) => {
+  const resetUploadArea = useCallback((keepCoverMode: boolean) => {
     setPreviewUrl(null)
     setImageBase64(null)
     setUploadKey((k) => k + 1)
-    if (!isCover) {
+    if (!keepCoverMode) {
       setCoverMode(false)
       setOriginalPageText(null)
-      setHeadline(DEFAULT_HEADLINE)
-      setSubline(DEFAULT_SUBLINE)
-      setSubmitLabel('Catch me up →')
     }
   }, [])
 
-  const handleFile = useCallback((file: File | undefined) => {
-    if (!file) return
-    if (!file.type.startsWith('image/')) {
-      setErrorText("That's not an image. Please photograph your page and upload a photo.")
-      return
-    }
-    if (file.size > MAX_FILE_BYTES) {
-      setErrorText('That photo is too large (max 5MB). Try a lower-resolution shot or compress it first.')
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      const dataUrl = String(ev.target?.result ?? '')
-      const b64 = dataUrl.split(',')[1]
-      if (!b64) {
-        setErrorText("Couldn't read that file. Try a different photo.")
+  const handleFile = useCallback(
+    (file: File | undefined) => {
+      if (!file) return
+      if (!file.type.startsWith('image/')) {
+        setErrorText(t('errors.not_image', { ns: 'common' }))
         return
       }
-      setImageBase64(b64)
-      setPreviewUrl(dataUrl)
-      setErrorText(null)
-    }
-    reader.onerror = () => {
-      setErrorText("Couldn't read that file. Try a different photo.")
-    }
-    reader.readAsDataURL(file)
-  }, [])
+      if (file.size > MAX_FILE_BYTES) {
+        setErrorText(t('errors.file_too_large', { ns: 'common' }))
+        return
+      }
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const dataUrl = String(ev.target?.result ?? '')
+        const b64 = dataUrl.split(',')[1]
+        if (!b64) {
+          setErrorText(t('errors.file_read_error', { ns: 'common' }))
+          return
+        }
+        setImageBase64(b64)
+        setPreviewUrl(dataUrl)
+        setErrorText(null)
+      }
+      reader.onerror = () => {
+        setErrorText(t('errors.file_read_error', { ns: 'common' }))
+      }
+      reader.readAsDataURL(file)
+    },
+    [t],
+  )
 
   const onSubmit = useCallback(async () => {
     if (!imageBase64) return
@@ -104,7 +124,7 @@ export function App() {
     setErrorText(null)
     setProgressPct(5)
 
-    const set = LOADING_SETS[Math.floor(Math.random() * LOADING_SETS.length)]!
+    const set = loadingSets[Math.floor(Math.random() * loadingSets.length)]!
 
     try {
       setStep(0, set, 5)
@@ -121,17 +141,10 @@ export function App() {
         setPhase('upload')
         setProgressPct(0)
         if (coverMode) {
-          setErrorText(
-            "Still couldn't identify the book. What chapter are you on? Type the title and chapter below and try again.",
-          )
+          setErrorText(t('errors.chapter_fallback', { ns: 'common' }))
         } else {
           setOriginalPageText(ocrText)
           setCoverMode(true)
-          setHeadline('Which book is it?')
-          setSubline(
-            "We couldn't identify the book from the page. Photo the cover or spine and we'll take it from there.",
-          )
-          setSubmitLabel('Try with cover →')
           resetUploadArea(true)
         }
         return
@@ -142,10 +155,11 @@ export function App() {
         text: textForSummary,
         book: identData.book,
         mode: selectedMode,
+        ui_locale: i18n.language === 'fr' ? 'fr' : 'en',
       })
 
       setProgressPct(100)
-      setLoadingStepText('Done ✦')
+      setLoadingStepText(t('loading.done', { ns: 'flows' }))
       await new Promise((r) => setTimeout(r, 500))
 
       setBookTitle(identData.book)
@@ -156,33 +170,47 @@ export function App() {
       const msg =
         err instanceof BookmarkedFetchError
           ? err.message
-          : 'Connection issue. Check your internet and try again.'
+          : t('errors.connection', { ns: 'common' })
       showError(msg)
     }
-  }, [imageBase64, coverMode, originalPageText, selectedMode, setStep, showError, resetUploadArea])
+  }, [
+    imageBase64,
+    coverMode,
+    originalPageText,
+    selectedMode,
+    locale,
+    loadingSets,
+    setStep,
+    showError,
+    resetUploadArea,
+    t,
+  ])
 
   const onTryAgain = useCallback(() => {
     setPhase('upload')
-    setSubmitLabel('Catch me up →')
     setImageBase64(null)
     setPreviewUrl(null)
     setCoverMode(false)
     setOriginalPageText(null)
-    setHeadline(DEFAULT_HEADLINE)
-    setSubline(DEFAULT_SUBLINE)
     setErrorText(null)
     setUploadKey((k) => k + 1)
   }, [])
 
+  const showLanguageSelector = phase === 'upload' || phase === 'result'
+
   return (
     <div className={page}>
+      {showLanguageSelector ? (
+        <LanguageSelector value={locale} onChange={onLocaleChange} />
+      ) : null}
+
       <SiteHeader />
 
       {phase === 'upload' && (
         <UploadCard
-          headline={headline}
-          subline={subline}
-          submitLabel={submitLabel}
+          headline={uploadCopy.headline}
+          subline={uploadCopy.subline}
+          submitLabel={uploadCopy.submitLabel}
           selectedMode={selectedMode}
           onModeChange={setSelectedMode}
           coverMode={coverMode}
@@ -213,7 +241,7 @@ export function App() {
         />
       )}
 
-      <div className={footerDeco}>crafted for readers who wander ✦ come back often</div>
+      <SiteFooter />
     </div>
   )
 }

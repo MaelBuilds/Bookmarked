@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   loadingBox,
   loadingLabel,
@@ -5,7 +6,6 @@ import {
   progressFill,
   progressTrack,
 } from '../styles/appStyles'
-import { LoadingBookSvg } from './icons'
 
 type LoadingViewProps = {
   stepText: string
@@ -14,12 +14,11 @@ type LoadingViewProps = {
 }
 
 export function LoadingView({ stepText, stepOpacity, progressPct }: LoadingViewProps) {
+  const { t } = useTranslation('flows')
+
   return (
     <div className={loadingBox}>
-      <div style={{ margin: '0 auto 24px' }}>
-        <LoadingBookSvg />
-      </div>
-      <div className={loadingLabel}>Reading your page…</div>
+      <div className={loadingLabel}>{t('loading.label')}</div>
       <div className={loadingStep} style={{ opacity: stepOpacity }}>
         {stepText}
       </div>

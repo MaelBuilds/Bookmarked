@@ -15,6 +15,68 @@ export const page = css({
   minHeight: '100vh',
 })
 
+export const langSelectorRoot = css({
+  position: 'absolute',
+  top: '20px',
+  right: '20px',
+  zIndex: '10',
+})
+
+export const langTrigger = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '4px',
+  minHeight: '44px',
+  padding: '6px 10px',
+  fontFamily: 'accent',
+  fontSize: '15px',
+  fontWeight: '700',
+  color: 'warmGrey',
+  background: 'transparent',
+  border: 'none',
+  borderRadius: '4px',
+  cursor: 'pointer',
+  transition: 'color 0.2s',
+  _hover: { color: 'amber' },
+})
+
+export const langMenu = css({
+  position: 'absolute',
+  top: '100%',
+  right: '0',
+  minWidth: '100px',
+  padding: '4px',
+  listStyle: 'none',
+  margin: '4px 0 0',
+  background: 'rgba(253, 246, 232, 0.95)',
+  border: '1px solid rgba(44, 26, 14, 0.12)',
+  borderRadius: '4px',
+  boxShadow: '0 8px 24px rgba(44, 26, 14, 0.1)',
+})
+
+export const langMenuItem = css({
+  display: 'block',
+  width: '100%',
+  minHeight: '44px',
+  padding: '10px 14px',
+  textAlign: 'start',
+  fontFamily: 'accent',
+  fontSize: '15px',
+  fontWeight: '700',
+  color: 'warmGrey',
+  background: 'transparent',
+  border: 'none',
+  borderRadius: '3px',
+  cursor: 'pointer',
+  transition: 'color 0.2s, background 0.2s',
+  _hover: { color: 'amber', background: 'rgba(247, 238, 214, 0.6)' },
+})
+
+export const langMenuItemActive = css({
+  color: 'rust',
+  background: 'rgba(184, 67, 26, 0.08)',
+})
+
 export const siteHeader = css({
   textAlign: 'center',
   padding: '64px 0 8px',
@@ -287,4 +349,28 @@ export const footerDeco = css({
   fontFamily: 'accent',
   fontSize: '14px',
   color: 'rgba(44, 26, 14, 0.6)',
+})
+
+export const footerCredit = css({
+  marginTop: '8px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '10px',
+  flexWrap: 'wrap',
+})
+
+export const footerLink = css({
+  color: 'rgba(44, 26, 14, 0.75)',
+  textDecoration: 'none',
+  transition: 'color 0.2s',
+  _hover: { color: 'amber' },
+})
+
+export const footerIconLink = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  lineHeight: 'inherit',
+  transition: 'opacity 0.2s, transform 0.2s',
+  _hover: { opacity: 0.85, transform: 'translateY(-1px)' },
 })

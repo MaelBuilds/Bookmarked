@@ -42,6 +42,25 @@ export function OpenBookSvg() {
   )
 }
 
+/** SVG Repo 354000 (linkedin-icon), recolored to Bookmarked palette */
+const LINKEDIN_ICON_PATH =
+  'M218.123122,218.127392 L180.191928,218.127392 L180.191928,158.724263 C180.191928,144.559023 179.939053,126.323993 160.463756,126.323993 C140.707926,126.323993 137.685284,141.757585 137.685284,157.692986 L137.685284,218.123441 L99.7540894,218.123441 L99.7540894,95.9665207 L136.168036,95.9665207 L136.168036,112.660562 L136.677736,112.660562 C144.102746,99.9650027 157.908637,92.3824528 172.605689,92.9280076 C211.050535,92.9280076 218.138927,118.216023 218.138927,151.114151 L218.123122,218.127392 Z M56.9550587,79.2685282 C44.7981969,79.2707099 34.9413443,69.4171797 34.9391618,57.260052 C34.93698,45.1029244 44.7902948,35.2458562 56.9471566,35.2436736 C69.1040185,35.2414916 78.9608713,45.0950217 78.963054,57.2521493 C78.9641017,63.090208 76.6459976,68.6895714 72.5186979,72.8184433 C68.3913982,76.9473153 62.7929898,79.26748 56.9550587,79.2685282 M75.9206558,218.127392 L37.94995,218.127392 L37.94995,95.9665207 L75.9206558,95.9665207 L75.9206558,218.127392 Z M237.033403,0.0182577091 L18.8895249,0.0182577091 C8.57959469,-0.0980923971 0.124827038,8.16056231 -0.001,18.4706066 L-0.001,237.524091 C0.120519052,247.839103 8.57460631,256.105934 18.8895249,255.9977 L237.033403,255.9977 C247.368728,256.125818 255.855922,247.859464 255.999,237.524091 L255.999,18.4548016 C255.851624,8.12438979 247.363742,-0.133792868 237.033403,0.000790807055'
+
+export function LinkedInIcon() {
+  return (
+    <svg
+      height="1em"
+      width="1em"
+      viewBox="0 0 256 256"
+      aria-hidden
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ display: 'block' }}
+    >
+      <path fill="#FAF2E0" stroke="#8B7355" strokeWidth="6" d={LINKEDIN_ICON_PATH} />
+    </svg>
+  )
+}
+
 export function CoverPromptSvg() {
   return (
     <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -50,61 +69,6 @@ export function CoverPromptSvg() {
       <line x1="20" y1="16" x2="34" y2="16" stroke="#7A2E1A" strokeWidth="1.5" strokeLinecap="round" />
       <line x1="20" y1="22" x2="34" y2="22" stroke="#7A2E1A" strokeWidth="1" strokeLinecap="round" />
       <line x1="20" y1="28" x2="30" y2="28" stroke="#7A2E1A" strokeWidth="1" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-export function LoadingBookSvg() {
-  return (
-    <svg width="80" height="64" viewBox="0 0 80 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <style>
-        {`
-          .page-flip { transform-origin: 40px 32px; animation: flip 1.8s ease-in-out infinite; }
-          .page-flip-2 { transform-origin: 40px 32px; animation: flip 1.8s ease-in-out infinite 0.3s; opacity: 0.6; }
-          @keyframes flip {
-            0%, 100% { transform: scaleX(1); }
-            40% { transform: scaleX(0.05); }
-            60% { transform: scaleX(0.05); }
-          }
-          .leaf-fall { animation: fall 2.4s ease-in infinite; }
-          .leaf-fall-2 { animation: fall 2.4s ease-in infinite 0.8s; }
-          @keyframes fall {
-            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(40px) rotate(45deg); opacity: 0; }
-          }
-        `}
-      </style>
-      <path
-        d="M40 56 C40 56 18 48 6 50 L6 12 C18 10 40 18 40 18"
-        stroke="#7A2E1A"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path
-        d="M40 56 C40 56 62 48 74 50 L74 12 C62 10 40 18 40 18"
-        stroke="#7A2E1A"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <rect className="page-flip" x="28" y="18" width="12" height="38" rx="1" fill="#F5E8CC" opacity="0.9" />
-      <rect className="page-flip-2" x="28" y="18" width="10" height="38" rx="1" fill="#F5E8CC" opacity="0.6" />
-      <path d="M40 18 L40 56" stroke="#C9963A" strokeWidth="1.5" strokeDasharray="3,2" />
-      <g className="leaf-fall" transform="translate(20, 0)">
-        <path
-          d="M55 4 C52 10 46 11 44 9 C45 14 43 18 40 20 C43 20 46 23 46 27 C48 24 51 23 53 26 C53 22 56 20 59 21 C57 18 56 14 57 10 C55 12 51 12 50 9 C53 9 55 4 55 4Z"
-          fill="#B8431A"
-          opacity="0.8"
-        />
-      </g>
-      <g className="leaf-fall-2" transform="translate(0, 0)">
-        <path
-          d="M18 8 C16 13 11 14 9 12 C10 17 8 21 5 22 C8 23 10 26 10 30 C12 27 15 26 17 28 C17 24 20 22 22 23 C20 20 20 16 21 12 C19 14 15 14 14 11 C16 11 18 8 18 8Z"
-          fill="#D4831E"
-          opacity="0.7"
-        />
-      </g>
     </svg>
   )
 }

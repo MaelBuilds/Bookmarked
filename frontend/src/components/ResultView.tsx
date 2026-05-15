@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { btnTryAgain } from '../../styled-system/recipes'
 import {
   bookChip,
@@ -10,6 +11,7 @@ import {
   resultTitle,
   summaryText,
 } from '../styles/appStyles'
+
 type ResultViewProps = {
   bookTitle: string
   summaryParagraphs: string[]
@@ -17,13 +19,15 @@ type ResultViewProps = {
 }
 
 export function ResultView({ bookTitle, summaryParagraphs, onTryAgain }: ResultViewProps) {
+  const { t } = useTranslation('flows')
+
   return (
     <div className={resultBox}>
       <div className={`${resultSheet} card-torn-top`}>
         <div className={bookChip}>
           📔 <span>{bookTitle}</span>
         </div>
-        <div className={resultTitle}>Here&apos;s where you left off</div>
+        <div className={resultTitle}>{t('result.title')}</div>
         <div className={resultOrnament}>
           <div className={ornLine} />
           <span className={ornLeaf}>🍂</span>
@@ -36,7 +40,7 @@ export function ResultView({ bookTitle, summaryParagraphs, onTryAgain }: ResultV
         </div>
       </div>
       <button type="button" className={btnTryAgain()} onClick={onTryAgain}>
-        ← Try another page
+        {t('result.tryAgain')}
       </button>
     </div>
   )

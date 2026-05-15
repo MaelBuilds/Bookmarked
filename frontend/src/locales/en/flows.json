@@ -1,0 +1,43 @@
+{
+  "upload": {
+    "eyebrow": "✦ no spoilers, ever ✦",
+    "headline": {
+      "default": "Where did you stop?",
+      "cover": "Which book is it?"
+    },
+    "subline": {
+      "default": "Photograph your current page. Bookmarked reads where you left off and catches you up — nothing beyond your page.",
+      "cover": "We couldn't identify the book from the page. Photo the cover or spine and we'll take it from there."
+    },
+    "submit": {
+      "default": "Catch me up →",
+      "cover": "Try with cover →"
+    },
+    "mode": {
+      "light": "✦ Previously on…",
+      "full": "Full recap"
+    },
+    "label": {
+      "page": "Photograph your current page",
+      "cover": "Photograph the cover or spine"
+    },
+    "sublabel": {
+      "page": "or drop an image here",
+      "cover": "We'll use it to identify your book"
+    },
+    "previewAlt": "Page preview"
+  },
+  "result": {
+    "title": "Here's where you left off",
+    "tryAgain": "← Try another page"
+  },
+  "loading": {
+    "label": "Reading your page…",
+    "done": "Done ✦",
+    "sets": [
+      ["Adjusting reading glasses…", "Scanning the page…", "Shushing the spoilers…"],
+      ["Finding your bookmark…", "Cross-referencing the plot…", "Sealing the spoiler vault…"],
+      ["On it…", "Speed-reading the chapters…", "Building your memory palace…"]
+    ]
+  }
+}
