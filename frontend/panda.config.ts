@@ -1,0 +1,133 @@
+import { defineConfig } from '@pandacss/dev'
+
+export default defineConfig({
+  preflight: true,
+  include: ['./src/**/*.{ts,tsx}'],
+  exclude: [],
+  jsxFramework: 'react',
+  outdir: 'styled-system',
+  theme: {
+    extend: {
+      tokens: {
+        colors: {
+          ink: { value: '#2C1A0E' },
+          rust: { value: '#B8431A' },
+          amber: { value: '#D4831E' },
+          forest: { value: '#4A6741' },
+          cream: { value: '#FDF6E8' },
+          paper: { value: '#FAF2E0' },
+          warmGrey: { value: '#8B7355' },
+          redBrown: { value: '#7A2E1A' },
+        },
+        fonts: {
+          body: { value: 'Lora, Georgia, serif' },
+          display: { value: 'Playfair Display, Georgia, serif' },
+          accent: { value: 'Caveat, cursive' },
+        },
+      },
+      recipes: {
+        modePill: {
+          className: 'mode-pill',
+          description: 'Summary mode tab (pixel parity with legacy UI)',
+          // Dynamic active={bool} in App.tsx is not visible to the extractor; emit all variants.
+          staticCss: ['*'],
+          base: {
+            padding: '8px 20px',
+            border: '1.5px solid rgba(44,26,14,0.2)',
+            borderRadius: '3px',
+            fontFamily: 'accent',
+            fontSize: '16px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            bg: 'transparent',
+            color: 'warmGrey',
+            transition: 'all 0.2s',
+            position: 'relative',
+            _after: {
+              content: '""',
+              position: 'absolute',
+              bottom: '-4px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '0',
+              height: '3px',
+              bg: 'rust',
+              borderRadius: '2px',
+              transition: 'width 0.2s',
+            },
+          },
+          variants: {
+            active: {
+              true: {
+                bg: 'rust',
+                color: 'cream',
+                borderColor: 'rust',
+                _after: { width: '0' },
+              },
+              false: {
+                _hover: {
+                  borderColor: 'amber',
+                  color: 'amber',
+                },
+              },
+            },
+          },
+          defaultVariants: {
+            active: false,
+          },
+        },
+        btnPrimary: {
+          className: 'btn-primary',
+          base: {
+            width: '100%',
+            padding: '16px',
+            bg: 'rust',
+            color: 'cream',
+            border: 'none',
+            borderRadius: '4px',
+            fontFamily: 'display',
+            fontSize: '16px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            marginTop: '18px',
+            transition: 'background 0.2s, transform 0.1s',
+            letterSpacing: '0.3px',
+            position: 'relative',
+            boxShadow: '3px 3px 0 rgba(44,26,14,0.2)',
+            _hover: { bg: 'redBrown' },
+            _active: {
+              transform: 'translate(2px, 2px)',
+              boxShadow: '1px 1px 0 rgba(44,26,14,0.2)',
+            },
+            _disabled: {
+              opacity: '0.4',
+              cursor: 'not-allowed',
+              boxShadow: 'none',
+            },
+          },
+        },
+        btnGhost: {
+          className: 'btn-ghost',
+          base: {
+            width: '100%',
+            padding: '14px',
+            bg: 'transparent',
+            color: 'warmGrey',
+            border: '1.5px solid rgba(44,26,14,0.2)',
+            borderRadius: '4px',
+            fontFamily: 'accent',
+            fontSize: '17px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            marginTop: '14px',
+            transition: 'border-color 0.2s, color 0.2s',
+            _hover: {
+              borderColor: 'amber',
+              color: 'amber',
+            },
+          },
+        },
+      },
+    },
+  },
+})

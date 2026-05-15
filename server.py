@@ -7,7 +7,11 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import os
 
-app = Flask(__name__, static_folder='.')
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIST = os.path.join(ROOT_DIR, 'frontend', 'dist')
+ASSETS_DIR = os.path.join(ROOT_DIR, 'assets')
+
+app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB upload cap
 
 limiter = Limiter(
@@ -68,23 +72,42 @@ def handle_gpt_error(e):
 
 @app.route('/')
 def index():
-    return send_from_directory('.', 'index.html')
+    index_path = os.path.join(FRONTEND_DIST, 'index.html')
+    if not os.path.isfile(index_path):
+        return (
+            '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bookmarked</title></head>'
+            '<body style="font-family:Georgia,serif;padding:2rem;max-width:36rem;line-height:1.5">'
+            '<p><strong>Frontend not built.</strong> The React app must be compiled first.</p>'
+            '<p>From the repo root:</p>'
+            '<pre style="background:#f5f5f5;padding:0.75rem">cd frontend\nnpm install\nnpm run build</pre>'
+            '<p>Then start the server again.</p>'
+            '</body></html>',
+            503,
+            {'Content-Type': 'text/html; charset=utf-8'},
+        )
+    return send_from_directory(FRONTEND_DIST, 'index.html')
+
+
+@app.route('/dist-assets/<path:filename>')
+def vite_dist_assets(filename):
+    return send_from_directory(os.path.join(FRONTEND_DIST, 'dist-assets'), filename)
+
 
 @app.route('/assets/<path:filename>')
 def serve_assets(filename):
-    return send_from_directory('assets', filename)
+    return send_from_directory(ASSETS_DIR, filename)
 
 @app.route('/ocr', methods=['POST'])
 @limiter.limit("20 per day; 5 per minute")
 def ocr():
+    if not request.json:
+        return jsonify({"error": "No image provided"}), 400
     image_data = request.json.get('image')
     if not image_data:
         return jsonify({"error": "No image provided"}), 400
     # Basic validation: base64-encoded images start with expected prefixes
     try:
-        header = image_data[:16].encode() if isinstance(image_data, str) else image_data[:16]
-        import base64 as _b64
-        decoded_start = _b64.b64decode(image_data[:20] + '==')[:4]
+        decoded_start = base64.b64decode(image_data[:20] + '==')[:4]
         # JPEG: FF D8, PNG: 89 50, GIF: 47 49, WEBP: 52 49
         valid_sigs = [b'\xff\xd8', b'\x89P', b'GI', b'RI']
         if not any(decoded_start[:2] == sig for sig in valid_sigs):

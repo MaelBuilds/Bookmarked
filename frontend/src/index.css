@@ -1,0 +1,26 @@
+@layer reset, base, tokens, recipes, utilities;
+
+@layer base {
+  body {
+    background: #f5e8cc url('/assets/bg.jpeg') center / cover no-repeat fixed;
+    font-family: 'Lora', Georgia, serif;
+    color: #2c1a0e;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(245, 232, 204, 0.45);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  @media (max-width: 768px) {
+    body {
+      background-attachment: scroll;
+    }
+  }
+}

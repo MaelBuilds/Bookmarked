@@ -27,6 +27,12 @@ nohup.out
 *.jpeg
 !assets/bg.jpeg
 
+# Frontend (Vite / Panda)
+frontend/node_modules/
+frontend/dist/
+frontend/styled-system/
+frontend/**/*.tsbuildinfo
+
 # IDE / editor
 .vscode-test
 session-notes.md
