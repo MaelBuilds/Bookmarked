@@ -16,7 +16,6 @@ import {
   uploadSublabel,
 } from '../styles/appStyles'
 import { CoverPromptSvg, OpenBookSvg } from './icons'
-import { TornPaperEdge } from './TornPaperEdge'
 
 type UploadCardProps = {
   headline: string
@@ -55,8 +54,7 @@ export function UploadCard({
     previewUrl != null ? `${uploadAreaBase} ${uploadAreaHasImage}` : uploadAreaBase
 
   return (
-    <div className={uploadCard}>
-      <TornPaperEdge />
+    <div className={`${uploadCard} card-torn-top`}>
       <p className={cardEyebrow}>✦ no spoilers, ever ✦</p>
       <h2 className={cardHeadline}>{headline}</h2>
       <p className={cardSubline}>{subline}</p>

@@ -23,4 +23,37 @@
       background-attachment: scroll;
     }
   }
+
+  /*
+   * Torn-paper top — repeating SVG tile (Bézier scallops), fixed band height.
+   * Tune: --n (integer periods), --tear-depth. Layer 1 = card body; layer 2 = edge tile.
+   */
+  .card-torn-top {
+    --n: 10;
+    --tear-depth: 14px;
+    --w: calc(100% / var(--n));
+    --mask-h: calc(var(--tear-depth) * 1.15);
+    -webkit-mask-image:
+      linear-gradient(#fff 0 0),
+      url('/assets/card-torn-edge-tile.svg');
+    -webkit-mask-size:
+      100% calc(100% - var(--mask-h)),
+      var(--w) var(--mask-h);
+    -webkit-mask-position:
+      0 var(--mask-h),
+      0 0;
+    -webkit-mask-repeat: no-repeat, repeat-x;
+    -webkit-mask-composite: source-over;
+    mask-image:
+      linear-gradient(#fff 0 0),
+      url('/assets/card-torn-edge-tile.svg');
+    mask-size:
+      100% calc(100% - var(--mask-h)),
+      var(--w) var(--mask-h);
+    mask-position:
+      0 var(--mask-h),
+      0 0;
+    mask-repeat: no-repeat, repeat-x;
+    mask-composite: add;
+  }
 }

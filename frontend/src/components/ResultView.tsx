@@ -1,4 +1,4 @@
-import { btnGhost } from '../../styled-system/recipes'
+import { btnTryAgain } from '../../styled-system/recipes'
 import {
   bookChip,
   ornLeaf,
@@ -10,8 +10,6 @@ import {
   resultTitle,
   summaryText,
 } from '../styles/appStyles'
-import { TornPaperEdge } from './TornPaperEdge'
-
 type ResultViewProps = {
   bookTitle: string
   summaryParagraphs: string[]
@@ -21,8 +19,7 @@ type ResultViewProps = {
 export function ResultView({ bookTitle, summaryParagraphs, onTryAgain }: ResultViewProps) {
   return (
     <div className={resultBox}>
-      <div className={resultSheet}>
-        <TornPaperEdge />
+      <div className={`${resultSheet} card-torn-top`}>
         <div className={bookChip}>
           📔 <span>{bookTitle}</span>
         </div>
@@ -38,7 +35,7 @@ export function ResultView({ bookTitle, summaryParagraphs, onTryAgain }: ResultV
           ))}
         </div>
       </div>
-      <button type="button" className={btnGhost()} onClick={onTryAgain}>
+      <button type="button" className={btnTryAgain()} onClick={onTryAgain}>
         ← Try another page
       </button>
     </div>

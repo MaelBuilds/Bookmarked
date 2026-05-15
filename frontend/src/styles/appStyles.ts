@@ -1,6 +1,6 @@
 import { css } from '../../styled-system/css'
 
-/** Shared frosted paper surface for cards + torn top edge (must stay identical). */
+/** Shared frosted paper surface for upload/result cards. */
 const cardSurface = {
   background: 'rgba(253, 246, 232, 0.88)',
   backdropFilter: 'blur(12px)',
@@ -63,24 +63,12 @@ export const uploadCard = css({
   ...cardSurface,
   borderRadius: '4px',
   border: '1.5px solid rgba(44,26,14,0.12)',
-  padding: '30px 28px 24px',
+  padding: 'calc(var(--mask-h, 16.1px) + 30px) 28px 24px',
   marginTop: '28px',
   position: 'relative',
   boxShadow:
     '4px 4px 0 rgba(44,26,14,0.06), 0 8px 32px rgba(44,26,14,0.08)',
-  overflow: 'visible',
-})
-
-export const tornEdge = css({
-  ...cardSurface,
-  position: 'absolute',
-  top: '-6px',
-  left: '10px',
-  right: '10px',
-  height: '12px',
-  borderRadius: '2px',
-  pointerEvents: 'none',
-  zIndex: 1,
+  overflow: 'hidden',
 })
 
 export const cardEyebrow = css({
@@ -224,17 +212,23 @@ export const progressFill = css({
   transition: 'width 0.6s ease',
 })
 
-export const resultBox = css({ width: '100%' })
+export const resultBox = css({
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+})
 
 export const resultSheet = css({
+  width: '100%',
   ...cardSurface,
   borderRadius: '4px',
   border: '1.5px solid rgba(44,26,14,0.12)',
-  padding: '30px 28px',
+  padding: 'calc(var(--mask-h, 16.1px) + 30px) 28px 30px',
   boxShadow:
     '4px 4px 0 rgba(44,26,14,0.06), 0 8px 32px rgba(44,26,14,0.08)',
   position: 'relative',
-  overflow: 'visible',
+  overflow: 'hidden',
 })
 
 export const bookChip = css({

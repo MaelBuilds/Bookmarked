@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 40" preserveAspectRatio="none">
+  <!-- Soft deckled top; valleys at x=0/100 for seamless repeat-x. White = visible. -->
+  <path
+    fill="#fff"
+    d="M 0 13
+       C 3 13 5 5 10 5
+       C 15 5 17 14 20 14
+       C 23 14 25 6 30 6
+       C 35 6 37 13 40 13
+       C 43 13 45 5 50 5
+       C 55 5 57 14 60 14
+       C 63 14 65 5 70 5
+       C 75 5 77 13 80 13
+       C 83 13 85 6 90 6
+       C 95 6 97 13 100 13
+       L 100 40
+       L 0 40
+       Z"
+  />
+</svg>
