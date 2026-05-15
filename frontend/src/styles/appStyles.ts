@@ -62,7 +62,6 @@ export const siteTagline = css({
 export const uploadCard = css({
   ...cardSurface,
   borderRadius: '4px',
-  border: '1.5px solid rgba(44,26,14,0.12)',
   padding: 'calc(var(--mask-h, 16.1px) + 30px) 28px 24px',
   marginTop: '28px',
   position: 'relative',
@@ -223,7 +222,6 @@ export const resultSheet = css({
   width: '100%',
   ...cardSurface,
   borderRadius: '4px',
-  border: '1.5px solid rgba(44,26,14,0.12)',
   padding: 'calc(var(--mask-h, 16.1px) + 30px) 28px 30px',
   boxShadow:
     '4px 4px 0 rgba(44,26,14,0.06), 0 8px 32px rgba(44,26,14,0.08)',
