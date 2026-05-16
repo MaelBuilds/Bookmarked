@@ -1,7 +1,7 @@
 import base64
+import hashlib
 import json
 import re
-import time
 import urllib.request
 import urllib.error
 from flask import Flask, request, jsonify, send_from_directory
@@ -22,29 +22,6 @@ limiter = Limiter(
     default_limits=[],
     storage_uri="memory://"
 )
-
-DEBUG_LOG_PATH = os.path.join(ROOT_DIR, 'debug-476059.log')
-
-
-def _agent_log(location, message, data=None, hypothesis_id=None, run_id='pre-fix'):
-    # #region agent log
-    try:
-        entry = {
-            'sessionId': '476059',
-            'timestamp': int(time.time() * 1000),
-            'location': location,
-            'message': message,
-            'data': data or {},
-            'runId': run_id,
-        }
-        if hypothesis_id:
-            entry['hypothesisId'] = hypothesis_id
-        with open(DEBUG_LOG_PATH, 'a', encoding='utf-8') as f:
-            f.write(json.dumps(entry) + '\n')
-    except Exception:
-        pass
-    # #endregion
-
 
 def _token_meta(token, source):
     if not token:
@@ -80,10 +57,33 @@ def _load_token():
     raise RuntimeError("GITHUB_TOKEN not set -- add it to your environment or .env file")
 
 
-_ENV_TOKEN, _TOKEN_SOURCE = _load_token()
-_agent_log('server.py:startup', 'token loaded', _token_meta(_ENV_TOKEN, _TOKEN_SOURCE), 'A')
 API_URL = "https://models.inference.ai.azure.com/chat/completions"
 API_VERSION = "multilingual-2"
+AI_PROVIDER = os.environ.get('AI_PROVIDER', 'github').strip().lower()
+GPT_RESPONSE_CACHE = {}
+FAKE_OCR_TEXT = (
+    "Paul Atreides studies the desert of Arrakis. "
+    "The spice is valuable, the Harkonnens remain a threat, and his family is trying to understand the planet."
+)
+FAKE_BOOK = "Dune by Frank Herbert"
+FAKE_SUMMARY_EN = (
+    "Paul Atreides and his family have arrived on Arrakis, where control of the spice has placed them in danger. "
+    "House Atreides is learning the politics and hazards of the desert while old enemies continue to threaten them. "
+    "At this passage, Paul is still near the beginning of that conflict, with the planet's risks becoming clearer."
+)
+FAKE_SUMMARY_FR = (
+    "Paul Atréides et sa famille sont arrivés sur Arrakis, où le contrôle de l'épice les met en danger. "
+    "La maison Atréides découvre les risques politiques et physiques du désert pendant que ses ennemis restent menaçants. "
+    "Dans ce passage, Paul se trouve encore au début de ce conflit, alors que les dangers de la planète deviennent plus nets."
+)
+
+if AI_PROVIDER not in {'github', 'fake'}:
+    raise RuntimeError("AI_PROVIDER must be either 'github' or 'fake'")
+
+if AI_PROVIDER == 'fake' and os.environ.get('RAILWAY_ENVIRONMENT'):
+    raise RuntimeError("Refusing to start Railway with AI_PROVIDER=fake")
+
+_ENV_TOKEN, _TOKEN_SOURCE = _load_token() if AI_PROVIDER == 'github' else (None, 'fake')
 
 class GPTError(Exception):
     """Raised when the LLM call fails for any reason."""
@@ -99,7 +99,29 @@ def api_error(code, message=None, status=400):
         body['error'] = message
     return jsonify(body), status
 
-def call_gpt(messages):
+def _fake_gpt_response(messages):
+    endpoint = request.endpoint if request else None
+    if endpoint == 'ocr':
+        return FAKE_OCR_TEXT
+    if endpoint == 'identify':
+        text = str(messages[-1].get('content', '') if messages else '')
+        if 'unknown' in text.lower() or 'needs_cover' in text.lower():
+            return "UNKNOWN"
+        return FAKE_BOOK
+    if endpoint == 'summarize':
+        joined = "\n".join(str(msg.get('content', '')) for msg in messages)
+        return FAKE_SUMMARY_FR if "OUTPUT LANGUAGE: French only" in joined else FAKE_SUMMARY_EN
+
+    joined = "\n".join(str(msg.get('content', '')) for msg in messages)
+    if "Reply with exactly one token: en OR fr" in joined:
+        return "en"
+    return "mocked response"
+
+
+def _call_github_models(messages):
+    cache_key = hashlib.sha256(json.dumps(messages, sort_keys=True).encode()).hexdigest()
+    if cache_key in GPT_RESPONSE_CACHE:
+        return GPT_RESPONSE_CACHE[cache_key]
     payload = json.dumps({"model": "gpt-4o-mini", "messages": messages}).encode()
     req = urllib.request.Request(API_URL, data=payload,
         headers={"Authorization": f"Bearer {_ENV_TOKEN}", "Content-Type": "application/json"})
@@ -107,9 +129,6 @@ def call_gpt(messages):
         with urllib.request.urlopen(req, timeout=30) as resp:
             body = json.load(resp)
     except urllib.error.HTTPError as e:
-        if e.code == 401:
-            meta = _token_meta(_ENV_TOKEN, _TOKEN_SOURCE)
-            _agent_log('server.py:call_gpt', 'GitHub Models returned 401', meta, 'B')
         code_map = {
             401: (401, "Invalid API token", "invalid_token"),
             429: (429, "AI service rate limit reached — try again in a minute", "gpt_rate_limit"),
@@ -121,9 +140,17 @@ def call_gpt(messages):
     except (urllib.error.URLError, TimeoutError, OSError):
         raise GPTError("Could not reach AI service — check your connection", 502, "gpt_unavailable")
     try:
-        return body["choices"][0]["message"]["content"]
+        content = body["choices"][0]["message"]["content"]
+        GPT_RESPONSE_CACHE[cache_key] = content
+        return content
     except (KeyError, IndexError, TypeError):
         raise GPTError("AI service returned an unexpected response", 502, "gpt_error")
+
+
+def call_gpt(messages):
+    if AI_PROVIDER == 'fake':
+        return _fake_gpt_response(messages)
+    return _call_github_models(messages)
 
 @app.errorhandler(GPTError)
 def handle_gpt_error(e):
@@ -165,6 +192,7 @@ def health():
     payload = {
         "ok": True,
         "api_version": API_VERSION,
+        "ai_provider": AI_PROVIDER,
         "summarize_response_fields": ["summary", "output_language", "api_version"],
     }
     if request.args.get('format') == 'json':
@@ -176,6 +204,7 @@ def health():
         '<h1>Bookmarked API</h1>'
         f'<p><strong>Status:</strong> OK</p>'
         f'<p><strong>Version:</strong> {API_VERSION}</p>'
+        f'<p><strong>AI provider:</strong> {AI_PROVIDER}</p>'
         '<p><strong>Summarize response includes:</strong> '
         'summary, output_language, api_version</p>'
         '<p>If this page is blank or you only see an empty JSON tree, '

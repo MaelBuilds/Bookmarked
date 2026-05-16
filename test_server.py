@@ -16,6 +16,8 @@ import pytest
 @pytest.fixture(autouse=True)
 def _set_token(monkeypatch):
     """Ensure GITHUB_TOKEN is always available so the app can import."""
+    if os.environ.get("RUN_LIVE_AI_TESTS", "").lower() == "true":
+        return
     monkeypatch.setenv("GITHUB_TOKEN", "test-token-fake")
 
 
@@ -35,6 +37,19 @@ def client(app):
 
 def _mock_gpt(return_value="mocked response"):
     return patch("server.call_gpt", return_value=return_value)
+
+
+def _reload_server(monkeypatch, provider="github", token="test-token-fake"):
+    monkeypatch.setenv("AI_PROVIDER", provider)
+    if token is None:
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    else:
+        monkeypatch.setenv("GITHUB_TOKEN", token)
+    import importlib
+    import server as srv
+    importlib.reload(srv)
+    srv.app.config["TESTING"] = True
+    return srv
 
 
 # ---------------------------------------------------------------------------
@@ -118,47 +133,52 @@ class TestSummarizeValidation:
 class TestLLMErrors:
     """call_gpt failures should return structured JSON errors, not stack traces."""
 
+    @pytest.fixture()
+    def github_client(self, monkeypatch):
+        srv = _reload_server(monkeypatch, provider="github")
+        return srv.app.test_client()
+
     def _make_http_error(self, code):
         return urllib.error.HTTPError(
             url="https://example.com", code=code, msg="",
             hdrs=MagicMock(), fp=io.BytesIO(b"{}"),
         )
 
-    def test_401_invalid_token(self, client):
+    def test_401_invalid_token(self, github_client):
         with patch("server.urllib.request.urlopen", side_effect=self._make_http_error(401)):
-            r = client.post("/identify", json={"text": "some text"})
+            r = github_client.post("/identify", json={"text": "some text"})
         assert r.status_code == 401
         assert "token" in r.get_json()["error"].lower()
 
-    def test_429_rate_limited(self, client):
+    def test_429_rate_limited(self, github_client):
         with patch("server.urllib.request.urlopen", side_effect=self._make_http_error(429)):
-            r = client.post("/identify", json={"text": "some text"})
+            r = github_client.post("/identify", json={"text": "some text"})
         assert r.status_code == 429
         assert "rate limit" in r.get_json()["error"].lower()
 
-    def test_500_api_down(self, client):
+    def test_500_api_down(self, github_client):
         with patch("server.urllib.request.urlopen", side_effect=self._make_http_error(500)):
-            r = client.post("/identify", json={"text": "some text"})
+            r = github_client.post("/identify", json={"text": "some text"})
         assert r.status_code == 502
         assert "down" in r.get_json()["error"].lower()
 
-    def test_503_unavailable(self, client):
+    def test_503_unavailable(self, github_client):
         with patch("server.urllib.request.urlopen", side_effect=self._make_http_error(503)):
-            r = client.post("/identify", json={"text": "some text"})
+            r = github_client.post("/identify", json={"text": "some text"})
         assert r.status_code == 502
 
-    def test_network_unreachable(self, client):
+    def test_network_unreachable(self, github_client):
         with patch("server.urllib.request.urlopen", side_effect=urllib.error.URLError("unreachable")):
-            r = client.post("/identify", json={"text": "some text"})
+            r = github_client.post("/identify", json={"text": "some text"})
         assert r.status_code == 502
         assert "reach" in r.get_json()["error"].lower()
 
-    def test_timeout(self, client):
+    def test_timeout(self, github_client):
         with patch("server.urllib.request.urlopen", side_effect=TimeoutError()):
-            r = client.post("/identify", json={"text": "some text"})
+            r = github_client.post("/identify", json={"text": "some text"})
         assert r.status_code == 502
 
-    def test_malformed_json_response(self, client):
+    def test_malformed_json_response(self, github_client):
         mock_resp = MagicMock()
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
@@ -166,7 +186,7 @@ class TestLLMErrors:
 
         with patch("server.urllib.request.urlopen", return_value=mock_resp), \
              patch("server.json.load", return_value={"unexpected": "shape"}):
-            r = client.post("/identify", json={"text": "some text"})
+            r = github_client.post("/identify", json={"text": "some text"})
         assert r.status_code == 502
         assert "unexpected" in r.get_json()["error"].lower()
 
@@ -337,12 +357,14 @@ class TestRateLimiter:
 
 class TestLoadToken:
     def test_loads_from_env_var(self, monkeypatch):
+        monkeypatch.setenv("AI_PROVIDER", "github")
         monkeypatch.setenv("GITHUB_TOKEN", "env-token-123")
         import importlib, server
         importlib.reload(server)
         assert server._ENV_TOKEN == "env-token-123"
 
     def test_loads_from_dotenv_file(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("AI_PROVIDER", "github")
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
         env_file = tmp_path / ".env"
         env_file.write_text("GITHUB_TOKEN=file-token-456\n")
@@ -353,6 +375,7 @@ class TestLoadToken:
         assert server._ENV_TOKEN == "file-token-456"
 
     def test_raises_when_no_token(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("AI_PROVIDER", "github")
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
         monkeypatch.setattr("server.os.path.dirname", lambda _: str(tmp_path))
         monkeypatch.setattr("server.__file__", str(tmp_path / "server.py"))
@@ -377,6 +400,7 @@ class TestHealth:
         assert r.status_code == 200
         data = r.get_json()
         assert data["api_version"] == "multilingual-2"
+        assert data["ai_provider"] in {"github", "fake"}
         assert "output_language" in data["summarize_response_fields"]
 
 
@@ -405,3 +429,82 @@ class TestHappyPaths:
         with _mock_gpt("The spice must flow"):
             r = client.post("/ocr", json={"image": _b64(JPEG_BYTES)})
         assert r.get_json()["text"] == "The spice must flow"
+
+
+# ===========================================================================
+# SHOULD-HAVE: Fake AI provider for automation
+# ===========================================================================
+
+class TestFakeAIProvider:
+    def test_fake_provider_routes_keep_shapes_and_skip_network(self, monkeypatch):
+        srv = _reload_server(monkeypatch, provider="fake", token=None)
+        c = srv.app.test_client()
+
+        with patch("server.urllib.request.urlopen") as urlopen:
+            ocr = c.post("/ocr", json={"image": _b64(JPEG_BYTES)})
+            assert ocr.status_code == 200
+            assert "text" in ocr.get_json()
+
+            identify = c.post("/identify", json={"text": ocr.get_json()["text"]})
+            assert identify.status_code == 200
+            assert identify.get_json() == {
+                "status": "ok",
+                "book": "Dune by Frank Herbert",
+            }
+
+            summarize = c.post("/summarize", json={
+                "text": ocr.get_json()["text"],
+                "book": identify.get_json()["book"],
+                "mode": "light",
+                "ui_locale": "en",
+            })
+            assert summarize.status_code == 200
+            data = summarize.get_json()
+            assert data["summary"]
+            assert data["output_language"] == "en"
+            assert data["api_version"] == "multilingual-2"
+
+        urlopen.assert_not_called()
+
+    def test_fake_provider_supports_unknown_book_scenario(self, monkeypatch):
+        srv = _reload_server(monkeypatch, provider="fake", token=None)
+        c = srv.app.test_client()
+
+        r = c.post("/identify", json={"text": "unknown passage needs_cover"})
+        assert r.status_code == 200
+        assert r.get_json() == {"status": "needs_cover"}
+
+    def test_fake_provider_health_metadata(self, monkeypatch):
+        srv = _reload_server(monkeypatch, provider="fake", token=None)
+        c = srv.app.test_client()
+
+        r = c.get("/health?format=json")
+        assert r.status_code == 200
+        assert r.get_json()["ai_provider"] == "fake"
+
+    def test_fake_provider_does_not_require_github_token(self, monkeypatch):
+        srv = _reload_server(monkeypatch, provider="fake", token=None)
+        assert srv.AI_PROVIDER == "fake"
+        assert srv._ENV_TOKEN is None
+
+
+# ===========================================================================
+# EXPLICIT ONLY: Live AI smoke test
+# ===========================================================================
+
+class TestLiveAISmoke:
+    @pytest.mark.live_ai
+    def test_live_identify_smoke(self, monkeypatch):
+        if os.environ.get("RUN_LIVE_AI_TESTS", "").lower() != "true":
+            pytest.skip("Set RUN_LIVE_AI_TESTS=true to call the live model")
+        if not os.environ.get("GITHUB_TOKEN"):
+            pytest.skip("GITHUB_TOKEN is required for live AI smoke tests")
+
+        srv = _reload_server(monkeypatch, provider="github", token=os.environ["GITHUB_TOKEN"])
+        c = srv.app.test_client()
+
+        r = c.post("/identify", json={
+            "text": "Paul Atreides stood on Arrakis, where the spice shaped the fate of great houses."
+        })
+        assert r.status_code == 200
+        assert "status" in r.get_json()

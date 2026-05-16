@@ -30,47 +30,87 @@ Photo your page. Bookmarked reads where you stopped and catches you up — who's
 
 ## Running locally
 
-**Prerequisites:** Python 3, **Node.js 20+** (for the UI build), and a GitHub personal access token with Models access.
-
-### Production-style (single server)
-
-Build the SPA once, then run Flask (serves the API and static UI on the same port):
+**Prerequisites:** Python 3, **Node.js 20+** (for the UI), and a GitHub personal access token with Models access.
 
 ```bash
 git clone https://github.com/MaelBuilds/Bookmarked.git
 cd Bookmarked
-pip3 install -r requirements.txt
-cd frontend && npm install && npm run build && cd ..
+pip install -r requirements.txt
+cd frontend && npm install && cd ..
 cp .env.example .env
 # Edit .env and add your GitHub token
-python3 server.py
+```
+
+`AI_PROVIDER=github` uses GitHub Models. Use `AI_PROVIDER=fake` only for local automation and tests.
+
+### Frontend development (hot reload — use this while editing React)
+
+**Editing React? Open [http://localhost:5173](http://localhost:5173), not :3000.** Port 3000 serves the last `npm run build`; changes in `frontend/src` will not appear there until you build again.
+
+**Terminal 1** — API (repo root):
+
+```bash
+python server.py
+```
+
+**Terminal 2** — UI with hot reload:
+
+```bash
+cd frontend && npm run dev
+```
+
+Vite proxies `/ocr`, `/identify`, `/summarize`, and `/assets` to Flask on port 3000. Override the Flask origin if needed: `VITE_FLASK_ORIGIN=http://127.0.0.1:3000`.
+
+**Windows one-launcher** (optional): from the repo root, `.\scripts\dev.ps1` starts Flask in a new window and Vite in the current terminal.
+
+First `npm install` in `frontend/` runs Panda codegen (`frontend/styled-system/`, gitignored). You do **not** need `npm run build` for everyday UI tweaks.
+
+### Production-style (single server)
+
+Build the SPA once, then run Flask (serves the API and static UI on the same port). Use this to smoke-test the deploy bundle or when you only want one process:
+
+```bash
+cd frontend && npm run build && cd ..
+python server.py
 ```
 
 Open [http://localhost:3000](http://localhost:3000). If `frontend/dist` is missing, `/` returns instructions to run the build.
 
-### Frontend development (hot reload + API proxy)
-
-Terminal 1 — Flask on port 3000:
-
-```bash
-python3 server.py
-```
-
-Terminal 2 — Vite on port 5173 (proxies `/ocr`, `/identify`, `/summarize`, `/assets` to Flask):
-
-```bash
-cd frontend && npm install && npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173). Override the Flask origin if needed: `VITE_FLASK_ORIGIN=http://127.0.0.1:3000`.
-
 ### Deploying (Railway, Fly, etc.)
+
+Before deploying, run the deterministic pre-deploy gate from the repo root:
+
+```bash
+./scripts/predeploy.ps1
+```
+
+This runs backend tests with `AI_PROVIDER=fake`, then builds the frontend.
 
 The host **build** step must compile the SPA before `python server.py` starts, for example:
 
 `cd frontend && npm ci && npm run build`
 
 Then run the Procfile / start command from the **repo root** so `frontend/dist` exists. Same-origin `/ocr`, `/identify`, `/summarize` require no CORS changes.
+
+Railway should run with `AI_PROVIDER=github` and `GITHUB_TOKEN` stored as platform secrets. The app refuses to start on Railway with `AI_PROVIDER=fake`.
+
+### Testing AI paths
+
+Default tests should avoid live AI calls:
+
+```bash
+AI_PROVIDER=fake pytest
+```
+
+Fake mode returns deterministic OCR, identify, and summarize responses so automation can verify the app flow without spending quota.
+
+Live model checks are explicit and narrow:
+
+```bash
+AI_PROVIDER=github RUN_LIVE_AI_TESTS=true pytest -m live_ai
+```
+
+Use live smoke tests before important releases only. They verify token/API availability, not full summary quality.
 
 ---
 
