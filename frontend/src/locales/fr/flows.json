@@ -3,15 +3,18 @@
     "eyebrow": "✦ jamais de spoilers ✦",
     "headline": {
       "default": "Où en étiez-vous ?",
-      "cover": "Quel livre est-ce ?"
+      "cover": "Quel livre est-ce ?",
+      "manual": "Indiquez-nous le livre"
     },
     "subline": {
       "default": "Photographiez votre page actuelle. Bookmarked lit où vous vous êtes arrêté et vous remet dans le bain — rien au-delà de votre page.",
-      "cover": "On n'a pas pu identifier le livre à partir de la page. Photographiez la couverture ou la tranche."
+      "cover": "On n'a pas pu identifier le livre à partir de la page. Photographiez la couverture ou la tranche — ou saisissez le titre ci-dessous.",
+      "manual": "On n'a toujours pas réussi à identifier le livre. Saisissez le titre et l'auteur, on vous rattrape à partir de votre page."
     },
     "submit": {
       "default": "Rattrapez-moi →",
-      "cover": "Essayer avec la couverture →"
+      "cover": "Rattrapez-moi →",
+      "manual": "Rattrapez-moi →"
     },
     "mode": {
       "light": "✦ Précédemment…",
@@ -19,12 +22,16 @@
     },
     "label": {
       "page": "Photographiez votre page actuelle",
-      "cover": "Photographiez la couverture ou la tranche"
+      "cover": "Photographiez la couverture ou la tranche",
+      "manual": "Titre et auteur"
     },
     "sublabel": {
       "page": "Prenez une photo ou choisissez-en une dans votre galerie — ou déposez une image ici",
-      "cover": "Prenez une photo ou choisissez-en une dans votre galerie — on s'en servira pour identifier votre livre"
+      "cover": "Prenez une photo ou choisissez-en une dans votre galerie — on s'en servira pour identifier votre livre",
+      "manual": "On utilisera la page que vous avez déjà photographiée pour bâtir votre récap"
     },
+    "manualPlaceholder": "ex. Charlie et la Chocolaterie par Roald Dahl",
+    "or": "ou",
     "previewAlt": "Aperçu de la page"
   },
   "result": {

@@ -215,6 +215,28 @@ export const uploadSublabel = css({
   color: 'warmGrey',
 })
 
+export const coverOrDivider = css({
+  fontFamily: 'accent',
+  fontSize: '14px',
+  color: 'warmGrey',
+  textAlign: 'center',
+  margin: '16px 0 12px',
+})
+
+export const manualField = css({
+  width: '100%',
+  padding: '0.65rem 0.8rem',
+  border: '1px solid #D8C9A6',
+  borderRadius: '8px',
+  font: 'inherit',
+  background: '#FFFDF7',
+  color: 'ink',
+  boxSizing: 'border-box',
+  _placeholder: {
+    color: 'warmGrey',
+  },
+})
+
 export const fileInput = css({
   position: 'absolute',
   inset: '0',

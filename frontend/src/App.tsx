@@ -27,6 +27,7 @@ export function App() {
   const [phase, setPhase] = useState<Phase>('upload')
   const [selectedMode, setSelectedMode] = useState<SummaryMode>('light')
   const [coverMode, setCoverMode] = useState(false)
+  const [manualBook, setManualBook] = useState('')
   const [originalPageText, setOriginalPageText] = useState<string | null>(null)
   const [imageBase64, setImageBase64] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -134,7 +135,8 @@ export function App() {
         setPhase('upload')
         setProgressPct(0)
         if (coverMode) {
-          setErrorText(t('errors.chapter_fallback', { ns: 'common' }))
+          setErrorText(t('errors.cover_not_identified', { ns: 'common' }))
+          resetUploadArea(true)
         } else {
           setOriginalPageText(ocrText)
           setCoverMode(true)
@@ -179,11 +181,46 @@ export function App() {
     t,
   ])
 
+  const onManualSubmit = useCallback(async () => {
+    const book = manualBook.trim()
+    const textForSummary = originalPageText
+    if (!book || !textForSummary) return
+    setPhase('loading')
+    setErrorText(null)
+    setProgressPct(70)
+    const set = loadingSets[Math.floor(Math.random() * loadingSets.length)]!
+    try {
+      setStep(2, set, 75)
+      const { summary } = await postSummarize({
+        text: textForSummary,
+        book,
+        mode: selectedMode,
+        ui_locale: i18n.language === 'fr' ? 'fr' : 'en',
+      })
+
+      setProgressPct(100)
+      setLoadingStepText(t('loading.done', { ns: 'flows' }))
+      await new Promise((r) => setTimeout(r, 500))
+
+      setBookTitle(book)
+      setSummaryParagraphs(summary.split('\n\n').filter((p) => p.trim()).map((p) => p.trim()))
+      setPhase('result')
+      setProgressPct(0)
+    } catch (err) {
+      const msg =
+        err instanceof BookmarkedFetchError
+          ? err.message
+          : t('errors.connection', { ns: 'common' })
+      showError(msg)
+    }
+  }, [manualBook, originalPageText, selectedMode, i18n.language, loadingSets, setStep, showError, t])
+
   const onTryAgain = useCallback(() => {
     setPhase('upload')
     setImageBase64(null)
     setPreviewUrl(null)
     setCoverMode(false)
+    setManualBook('')
     setOriginalPageText(null)
     setErrorText(null)
     setUploadKey((k) => k + 1)
@@ -207,6 +244,9 @@ export function App() {
           selectedMode={selectedMode}
           onModeChange={setSelectedMode}
           coverMode={coverMode}
+          manualBook={manualBook}
+          onManualBookChange={setManualBook}
+          onManualSubmit={onManualSubmit}
           previewUrl={previewUrl}
           uploadKey={uploadKey}
           errorText={errorText}

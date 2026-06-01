@@ -3,15 +3,18 @@
     "eyebrow": "✦ no spoilers, ever ✦",
     "headline": {
       "default": "Where did you stop?",
-      "cover": "Which book is it?"
+      "cover": "Which book is it?",
+      "manual": "Tell us the book"
     },
     "subline": {
       "default": "Photograph your current page. Bookmarked reads where you left off and catches you up — nothing beyond your page.",
-      "cover": "We couldn't identify the book from the page. Photo the cover or spine and we'll take it from there."
+      "cover": "We couldn't identify the book from the page. Photo the cover or spine — or type the title below.",
+      "manual": "We still couldn't place the book. Type the title and author and we'll catch you up from your page."
     },
     "submit": {
       "default": "Catch me up →",
-      "cover": "Try with cover →"
+      "cover": "Catch me up →",
+      "manual": "Catch me up →"
     },
     "mode": {
       "light": "✦ Previously on…",
@@ -19,12 +22,16 @@
     },
     "label": {
       "page": "Photograph your current page",
-      "cover": "Photograph the cover or spine"
+      "cover": "Photograph the cover or spine",
+      "manual": "Title and author"
     },
     "sublabel": {
       "page": "Take a photo or pick from your gallery — or drop an image here",
-      "cover": "Take a photo or pick from your gallery — we'll use it to identify your book"
+      "cover": "Take a photo or pick from your gallery — we'll use it to identify your book",
+      "manual": "We'll use the page you already photographed to build your recap"
     },
+    "manualPlaceholder": "e.g. Charlie and the Chocolate Factory by Roald Dahl",
+    "or": "or",
     "previewAlt": "Page preview"
   },
   "result": {
