@@ -10,9 +10,9 @@
     "optionFr": "French"
   },
   "errors": {
-    "not_image": "That's not an image. Please photograph your page and upload a photo.",
-    "file_too_large": "That photo is too large (max 5MB). Try a lower-resolution shot or compress it first.",
-    "file_read_error": "Couldn't read that file. Try a different photo.",
+    "not_image": "That's not an image file. Choose a photo from your camera or gallery.",
+    "file_too_large": "That image is too large (max 5MB). Choose a smaller photo, pick one from your gallery, or take a new shot.",
+    "file_read_error": "Couldn't read that image. Try another photo from your gallery or camera.",
     "chapter_fallback": "Still couldn't identify the book. What chapter are you on? Type the title and chapter below and try again.",
     "connection": "Connection issue. Check your internet and try again.",
     "server_unreachable": "Cannot reach the server. Start Flask (python server.py) and keep it running on port 3000.",

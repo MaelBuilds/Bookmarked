@@ -10,9 +10,9 @@
     "optionFr": "Français"
   },
   "errors": {
-    "not_image": "Ce n'est pas une image. Photographiez votre page et importez une photo.",
-    "file_too_large": "Cette photo est trop lourde (max. 5 Mo). Essayez une photo moins lourde ou compressez-la.",
-    "file_read_error": "Impossible de lire ce fichier. Essayez une autre photo.",
+    "not_image": "Ce n'est pas un fichier image. Choisissez une photo depuis l'appareil photo ou la galerie.",
+    "file_too_large": "Cette image est trop lourde (max. 5 Mo). Choisissez une photo plus légère, depuis la galerie, ou refaites la prise.",
+    "file_read_error": "Impossible de lire cette image. Essayez une autre photo depuis la galerie ou l'appareil photo.",
     "chapter_fallback": "Toujours pas identifié. Quel chapitre ? Saisissez le titre et le chapitre ci-dessous, puis réessayez.",
     "connection": "Problème de connexion. Vérifiez votre réseau et réessayez.",
     "server_unreachable": "Impossible de joindre le serveur. Lancez Flask (python server.py) sur le port 3000.",

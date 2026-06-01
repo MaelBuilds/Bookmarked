@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { page } from './styles/appStyles'
 import { SiteFooter } from './components/SiteFooter'
-import { MAX_FILE_BYTES } from './constants'
+import { PrepareImageError, prepareUploadImage } from './lib/prepareUploadImage'
 import {
   BookmarkedFetchError,
   postIdentify,
@@ -88,19 +88,10 @@ export function App() {
   }, [])
 
   const handleFile = useCallback(
-    (file: File | undefined) => {
+    async (file: File | undefined) => {
       if (!file) return
-      if (!file.type.startsWith('image/')) {
-        setErrorText(t('errors.not_image', { ns: 'common' }))
-        return
-      }
-      if (file.size > MAX_FILE_BYTES) {
-        setErrorText(t('errors.file_too_large', { ns: 'common' }))
-        return
-      }
-      const reader = new FileReader()
-      reader.onload = (ev) => {
-        const dataUrl = String(ev.target?.result ?? '')
+      try {
+        const { dataUrl } = await prepareUploadImage(file)
         const b64 = dataUrl.split(',')[1]
         if (!b64) {
           setErrorText(t('errors.file_read_error', { ns: 'common' }))
@@ -109,11 +100,13 @@ export function App() {
         setImageBase64(b64)
         setPreviewUrl(dataUrl)
         setErrorText(null)
-      }
-      reader.onerror = () => {
+      } catch (err) {
+        if (err instanceof PrepareImageError) {
+          setErrorText(t(`errors.${err.code}`, { ns: 'common' }))
+          return
+        }
         setErrorText(t('errors.file_read_error', { ns: 'common' }))
       }
-      reader.readAsDataURL(file)
     },
     [t],
   )
