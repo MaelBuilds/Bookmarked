@@ -7,6 +7,7 @@ import urllib.request
 import urllib.error
 import urllib.parse
 from flask import Flask, request, jsonify, send_from_directory
+from image_orientation import normalize_page_image_b64
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import os
@@ -65,6 +66,8 @@ DEFAULT_MODEL = "gpt-4o-mini"
 SUMMARIZE_FULL_MODEL = os.environ.get('SUMMARIZE_FULL_MODEL', 'gpt-4.1').strip()
 AI_PROVIDER = os.environ.get('AI_PROVIDER', 'github').strip().lower()
 GPT_RESPONSE_CACHE = {}
+# Bump when image preprocessing changes so stale vision OCR is not reused.
+IMAGE_PIPELINE_TAG = 'orient-v1'
 FAKE_OCR_TEXT = (
     "Paul Atreides studies the desert of Arrakis. "
     "The spice is valuable, the Harkonnens remain a threat, and his family is trying to understand the planet."
@@ -204,6 +207,10 @@ def _catalog_lookup(title, author, lang=None):
     try:
         with urllib.request.urlopen(url, timeout=8) as resp:
             data = json.load(resp)
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            raise _CatalogUnavailable()
+        raise
     except (urllib.error.URLError, TimeoutError, OSError, ValueError):
         raise _CatalogUnavailable()
     for item in data.get('items') or []:
@@ -215,6 +222,15 @@ def _catalog_lookup(title, author, lang=None):
         author_str = authors[0] if authors else author
         return f"{cat_title} by {author_str}" if author_str else cat_title
     return None
+
+
+def _plausible_book_guess(candidate, passage_len):
+    if candidate.upper() == "UNKNOWN":
+        return False
+    title, author = _parse_title_author(candidate)
+    if len(title) < 3 or len(author) < 3:
+        return False
+    return passage_len >= 120
 
 
 def _resolve_identification(candidate, lang=None):
@@ -257,7 +273,7 @@ def _fake_gpt_response(messages):
 def _call_github_models(messages, meta=None, model=None):
     model = model or DEFAULT_MODEL
     cache_key = hashlib.sha256(
-        json.dumps([model, messages], sort_keys=True).encode()
+        json.dumps([model, IMAGE_PIPELINE_TAG, messages], sort_keys=True).encode()
     ).hexdigest()
     if cache_key in GPT_RESPONSE_CACHE:
         if meta is not None:
@@ -338,6 +354,7 @@ def health():
         "ok": True,
         "api_version": API_VERSION,
         "ai_provider": AI_PROVIDER,
+        "page_orientation_fix": True,
         "summarize_response_fields": ["summary", "output_language", "api_version"],
     }
     if request.args.get('format') == 'json':
@@ -376,10 +393,18 @@ def ocr():
             return api_error('invalid_image', 'Invalid image format', 400)
     except Exception:
         return api_error('invalid_image', 'Invalid image data', 400)
+    try:
+        image_data = normalize_page_image_b64(image_data)
+    except Exception:
+        return api_error('invalid_image', 'Could not process image', 400)
+    if _bookmarked_debug():
+        _debug_log('ocr image normalized (EXIF / 180° heuristic)')
     gpt_meta = {}
     extracted = call_gpt([
         {"role": "system", "content": (
             "Extract only the text visible in this image. Return raw text exactly as it appears. "
+            "If the photo is upside down or rotated, still return the text in normal reading order "
+            "as on an upright page. "
             "No commentary, labels, or preamble (do not write e.g. 'Here is the text'). Nothing else."
         )},
         {"role": "user", "content": [
@@ -422,7 +447,12 @@ def identify():
     if candidate.upper() != "UNKNOWN" and _catalog_enabled():
         lang = detect_passage_language_local(text)
         resolved = _resolve_identification(candidate, lang)
-        book = resolved if resolved else "UNKNOWN"
+        if resolved:
+            book = resolved
+        elif _plausible_book_guess(candidate, len(text)):
+            book = candidate.strip().rstrip('.')
+        else:
+            book = "UNKNOWN"
 
     if book.upper() == "UNKNOWN":
         payload = {"status": "needs_cover"}

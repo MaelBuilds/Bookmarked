@@ -12,6 +12,8 @@ Design principle: the model is **grounded**, not trusted blind. Book ID is verif
 
 ### Step 1 — OCR
 
+Before the vision call, the server normalizes the photo: JPEG EXIF transpose (Pillow) and, when confident, a **180°** upright correction from page layout (page numbers / text mass tend to sit lower). Sideways (90°/270°) shots are not auto-corrected yet.
+
 Extract raw text from the page photo. No interpretation, no book identification.
 
 **System prompt:**

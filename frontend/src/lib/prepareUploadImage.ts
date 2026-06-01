@@ -4,6 +4,10 @@ const MAX_LONG_EDGE = 2048
 const JPEG_QUALITY = 0.85
 const JPEG_QUALITY_RETRY = 0.75
 const JPEG_QUALITY_EXIF_ONLY = 0.92
+const ANALYSIS_LONG_EDGE = 512
+const INK_THRESHOLD = 200
+const FLIP_MIN_SCORE_DELTA = 500
+const BOTTOM_TOP_WEIGHT = 0.25
 
 export type PrepareImageErrorCode = 'not_image' | 'file_too_large' | 'file_read_error'
 
@@ -16,11 +20,6 @@ export class PrepareImageError extends Error {
 
 /** Read JPEG EXIF orientation (1–8). Non-JPEG or missing tag → 1. */
 export async function getExifOrientation(file: File): Promise<number> {
-  if (!file.type.includes('jpeg') && !file.type.includes('jpg')) {
-    const name = file.name.toLowerCase()
-    if (!name.endsWith('.jpg') && !name.endsWith('.jpeg')) return 1
-  }
-
   const buf = await file.slice(0, 65536).arrayBuffer()
   const view = new DataView(buf)
   if (view.byteLength < 2 || view.getUint16(0, false) !== 0xffd8) return 1
@@ -161,6 +160,85 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   })
 }
 
+function inkProfile(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const { data } = ctx.getImageData(0, 0, w, h)
+  const rows = new Array<number>(h).fill(0)
+  for (let y = 0; y < h; y++) {
+    let sum = 0
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4
+      const lum = 0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]!
+      if (lum < INK_THRESHOLD) sum++
+    }
+    rows[y] = sum
+  }
+  const mean = rows.reduce((a, b) => a + b, 0) / h
+  const variance =
+    rows.reduce((acc, r) => acc + (r - mean) ** 2, 0) / h || 0
+  const third = Math.floor(h / 3)
+  const top = rows.slice(0, third).reduce((a, b) => a + b, 0)
+  const bottom = rows.slice(2 * third).reduce((a, b) => a + b, 0)
+  return { variance, bottomTop: bottom - top }
+}
+
+function drawOrientedThumb(
+  img: HTMLImageElement,
+  exifOrientation: number,
+  flip180: 0 | 180,
+): { ctx: CanvasRenderingContext2D; w: number; h: number } | null {
+  const { width, height } = orientedSize(
+    img.naturalWidth,
+    img.naturalHeight,
+    exifOrientation,
+  )
+  const longEdge = Math.max(width, height)
+  const scale = longEdge > ANALYSIS_LONG_EDGE ? ANALYSIS_LONG_EDGE / longEdge : 1
+  const w = Math.max(1, Math.round(width * scale))
+  const h = Math.max(1, Math.round(height * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+  ctx.fillStyle = '#fff'
+  ctx.fillRect(0, 0, w, h)
+  if (flip180 === 180) {
+    ctx.translate(w, h)
+    ctx.rotate(Math.PI)
+  }
+  applyExifTransform(ctx, exifOrientation, w, h)
+  ctx.drawImage(img, 0, 0, w, h)
+  return { ctx, w, h }
+}
+
+/** 180° correction when EXIF is normal but the page is physically upside down. */
+function detectUpsideDown(
+  img: HTMLImageElement,
+  exifOrientation: number,
+): 0 | 180 {
+  const a = drawOrientedThumb(img, exifOrientation, 0)
+  const b = drawOrientedThumb(img, exifOrientation, 180)
+  if (!a || !b) return 0
+  const profile0 = inkProfile(a.ctx, a.w, a.h)
+  const profile180 = inkProfile(b.ctx, b.w, b.h)
+  const score0 = profile0.variance + BOTTOM_TOP_WEIGHT * profile0.bottomTop
+  const score180 = profile180.variance + BOTTOM_TOP_WEIGHT * profile180.bottomTop
+  if (Math.abs(score180 - score0) < FLIP_MIN_SCORE_DELTA) return 0
+  return score180 > score0 ? 180 : 0
+}
+
+function rotateCanvas180(source: HTMLCanvasElement): HTMLCanvasElement {
+  const out = document.createElement('canvas')
+  out.width = source.width
+  out.height = source.height
+  const ctx = out.getContext('2d')
+  if (!ctx) throw new PrepareImageError('file_read_error')
+  ctx.translate(out.width, out.height)
+  ctx.rotate(Math.PI)
+  ctx.drawImage(source, 0, 0)
+  return out
+}
+
 async function encodeCanvas(
   canvas: HTMLCanvasElement,
   compressForSize: boolean,
@@ -182,6 +260,7 @@ async function renderToDataUrl(
   img: HTMLImageElement,
   orientation: number,
   compressForSize: boolean,
+  flip180: 0 | 180,
 ): Promise<string> {
   const naturalW = img.naturalWidth
   const naturalH = img.naturalHeight
@@ -204,19 +283,24 @@ async function renderToDataUrl(
   applyExifTransform(octx, orientation, orientedW, orientedH)
   octx.drawImage(img, 0, 0)
 
-  let targetW = orientedW
-  let targetH = orientedH
+  let source = oriented
+  if (flip180 === 180) {
+    source = rotateCanvas180(oriented)
+  }
+
+  let targetW = source.width
+  let targetH = source.height
   if (compressForSize) {
-    const longEdge = Math.max(orientedW, orientedH)
+    const longEdge = Math.max(source.width, source.height)
     if (longEdge > MAX_LONG_EDGE) {
       const scale = MAX_LONG_EDGE / longEdge
-      targetW = Math.round(orientedW * scale)
-      targetH = Math.round(orientedH * scale)
+      targetW = Math.round(source.width * scale)
+      targetH = Math.round(source.height * scale)
     }
   }
 
-  if (targetW === orientedW && targetH === orientedH) {
-    return encodeCanvas(oriented, compressForSize)
+  if (targetW === source.width && targetH === source.height) {
+    return encodeCanvas(source, compressForSize)
   }
 
   const scaled = document.createElement('canvas')
@@ -224,12 +308,12 @@ async function renderToDataUrl(
   scaled.height = targetH
   const sctx = scaled.getContext('2d')
   if (!sctx) throw new PrepareImageError('file_read_error')
-  sctx.drawImage(oriented, 0, 0, orientedW, orientedH, 0, 0, targetW, targetH)
+  sctx.drawImage(source, 0, 0, source.width, source.height, 0, 0, targetW, targetH)
   return encodeCanvas(scaled, compressForSize)
 }
 
 /**
- * Normalize upload images: EXIF orientation when needed; resize/compress only over cap.
+ * Normalize upload images: EXIF orientation, 180° upright when needed; resize/compress over cap.
  */
 export async function prepareUploadImage(file: File): Promise<{ dataUrl: string }> {
   if (!file.type.startsWith('image/')) {
@@ -238,14 +322,16 @@ export async function prepareUploadImage(file: File): Promise<{ dataUrl: string 
 
   const orientation = await getExifOrientation(file)
   const compressForSize = file.size > MAX_FILE_BYTES
-  const needsCanvas = orientation !== 1 || compressForSize
+  const img = await loadImageFromFile(file)
+  const flip180 = detectUpsideDown(img, orientation)
+  const needsCanvas =
+    orientation !== 1 || compressForSize || flip180 === 180
 
   if (!needsCanvas) {
     const dataUrl = await readFileAsDataUrl(file)
     return { dataUrl }
   }
 
-  const img = await loadImageFromFile(file)
-  const dataUrl = await renderToDataUrl(img, orientation, compressForSize)
+  const dataUrl = await renderToDataUrl(img, orientation, compressForSize, flip180)
   return { dataUrl }
 }

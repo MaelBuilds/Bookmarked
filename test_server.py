@@ -60,10 +60,18 @@ def _b64(raw_bytes: bytes) -> str:
     return base64.b64encode(raw_bytes).decode()
 
 
-JPEG_BYTES = b'\xff\xd8\xff\xe0' + b'\x00' * 20
-PNG_BYTES  = b'\x89PNG\r\n\x1a\n' + b'\x00' * 20
-GIF_BYTES  = b'GIF89a' + b'\x00' * 20
-WEBP_BYTES = b'RIFF' + struct.pack('<I', 0) + b'WEBP' + b'\x00' * 20
+def _tiny_image_bytes(fmt, ext=()):
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new('RGB', (16, 24), 'white').save(buf, format=fmt)
+    return buf.getvalue()
+
+
+JPEG_BYTES = _tiny_image_bytes('JPEG')
+PNG_BYTES = _tiny_image_bytes('PNG')
+GIF_BYTES = _tiny_image_bytes('GIF')
+WEBP_BYTES = _tiny_image_bytes('WEBP')
 PDF_BYTES  = b'%PDF-1.4' + b'\x00' * 20
 TEXT_BYTES = b'Hello, this is plain text, not an image at all'
 
@@ -94,6 +102,31 @@ def assert_valid_charlie_dahl_identify(book):
 # ===========================================================================
 # Identify hygiene (OCR preamble, suspect-title retry)
 # ===========================================================================
+
+class TestImageOrientation:
+    def test_chooses_180_for_upside_down_page(self):
+        from PIL import Image, ImageDraw
+        import image_orientation as orient
+
+        img = Image.new('RGB', (320, 480), 'white')
+        draw = ImageDraw.Draw(img)
+        for y in (80, 140, 200, 260):
+            draw.rectangle((40, y, 280, y + 8), fill='black')
+        draw.rectangle((40, 430, 280, 455), fill='black')
+        upside_down = img.rotate(180)
+        assert orient.choose_upright_rotation(upside_down) == 180
+
+    def test_leaves_upright_page_unrotated(self):
+        from PIL import Image, ImageDraw
+        import image_orientation as orient
+
+        img = Image.new('RGB', (320, 480), 'white')
+        draw = ImageDraw.Draw(img)
+        for y in (80, 140, 200, 260):
+            draw.rectangle((40, y, 280, y + 8), fill='black')
+        draw.rectangle((40, 430, 280, 455), fill='black')
+        assert orient.choose_upright_rotation(img) == 0
+
 
 class TestIdentifyHygiene:
     def test_clean_passage_strips_french_ocr_preamble(self):
