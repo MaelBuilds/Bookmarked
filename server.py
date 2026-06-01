@@ -2,8 +2,10 @@ import base64
 import hashlib
 import json
 import re
+import sys
 import urllib.request
 import urllib.error
+import urllib.parse
 from flask import Flask, request, jsonify, send_from_directory
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -59,6 +61,8 @@ def _load_token():
 
 API_URL = "https://models.inference.ai.azure.com/chat/completions"
 API_VERSION = "multilingual-2"
+DEFAULT_MODEL = "gpt-4o-mini"
+SUMMARIZE_FULL_MODEL = os.environ.get('SUMMARIZE_FULL_MODEL', 'gpt-4.1').strip()
 AI_PROVIDER = os.environ.get('AI_PROVIDER', 'github').strip().lower()
 GPT_RESPONSE_CACHE = {}
 FAKE_OCR_TEXT = (
@@ -99,6 +103,138 @@ def api_error(code, message=None, status=400):
         body['error'] = message
     return jsonify(body), status
 
+
+def _bookmarked_debug():
+    return os.environ.get('BOOKMARKED_DEBUG', '').lower() in ('1', 'true', 'yes')
+
+
+def _text_preview(text, limit=200):
+    collapsed = ' '.join(text.split())
+    if len(collapsed) <= limit:
+        return collapsed
+    return collapsed[:limit] + '…'
+
+
+def _debug_log(message):
+    if _bookmarked_debug():
+        print(f'[bookmarked] {message}', file=sys.stderr, flush=True)
+
+
+_OCR_PREAMBLE_PATTERNS = (
+    re.compile(r'^\s*voici\s+le\s+texte\s+extrait\s*:\s*', re.I),
+    re.compile(r'^\s*here\s+is\s+the\s+extracted\s+text\s*:\s*', re.I),
+    re.compile(r'^\s*here\s+is\s+the\s+text\s*:\s*', re.I),
+)
+
+IDENTIFY_SYSTEM = (
+    "You identify the published book that a text excerpt is taken from. "
+    "The excerpt may be narration, dialogue, or an in-book song or poem. "
+    "Reply with the title and author of the real, published work — never a character name, "
+    "a chapter or poem title, or a word lifted from the passage. "
+    "Use the book's title in the SAME LANGUAGE as the excerpt — for a French passage give the "
+    "French title (e.g. 'Charlie et la Chocolaterie par Roald Dahl'), for an English passage the English title. "
+    "Reply with ONLY the book in the form: Title by Author. "
+    "If you are not confident which published work this excerpt comes from, reply with only: UNKNOWN"
+)
+
+
+class _CatalogUnavailable(Exception):
+    """Raised when the bibliographic catalog cannot be reached (vs. a clean no-match)."""
+
+
+def _clean_passage_text(text):
+    cleaned = text.strip()
+    for pattern in _OCR_PREAMBLE_PATTERNS:
+        cleaned = pattern.sub('', cleaned)
+    return cleaned.strip()
+
+
+def _parse_title_author(book):
+    """Split a 'Title by Author' / 'Titre par Auteur' string into (title, author)."""
+    book = book.strip()
+    lowered = book.lower()
+    for sep in (' by ', ' par '):
+        idx = lowered.find(sep)
+        if idx != -1:
+            return book[:idx].strip(' .'), book[idx + len(sep):].strip(' .')
+    return book.strip(' .'), ''
+
+
+def _normalize_for_match(text):
+    return re.sub(r'[^a-z0-9]+', ' ', text.lower()).strip()
+
+
+def _title_overlap(candidate_title, catalog_title):
+    """True when two normalized titles share enough word tokens to be the same work."""
+    a = set(_normalize_for_match(candidate_title).split())
+    b = set(_normalize_for_match(catalog_title).split())
+    if not a or not b:
+        return False
+    common = a & b
+    return len(common) >= max(1, min(len(a), len(b)) // 2)
+
+
+def _catalog_enabled():
+    """Catalog grounding runs against the real model; skipped in fake/test contexts."""
+    return AI_PROVIDER == 'github' and not app.config.get('TESTING', False)
+
+
+def _catalog_lookup(title, author, lang=None):
+    """Verify a candidate against Google Books.
+
+    When `lang` is given, results are restricted to that language so the
+    matching-language edition title is returned (e.g. the French title for a
+    French passage). Returns the canonical 'Title by Author' on a confident
+    match, None on a clean no-match, raises _CatalogUnavailable if unreachable.
+    """
+    q_parts = []
+    if title:
+        q_parts.append('intitle:' + urllib.parse.quote(title))
+    if author:
+        q_parts.append('inauthor:' + urllib.parse.quote(author))
+    if not q_parts:
+        return None
+    url = (
+        'https://www.googleapis.com/books/v1/volumes?q='
+        + '+'.join(q_parts)
+        + '&maxResults=5&printType=books'
+    )
+    if lang:
+        url += '&langRestrict=' + urllib.parse.quote(lang)
+    try:
+        with urllib.request.urlopen(url, timeout=8) as resp:
+            data = json.load(resp)
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+        raise _CatalogUnavailable()
+    for item in data.get('items') or []:
+        info = item.get('volumeInfo', {})
+        cat_title = info.get('title', '')
+        if not cat_title or not _title_overlap(title, cat_title):
+            continue
+        authors = info.get('authors') or []
+        author_str = authors[0] if authors else author
+        return f"{cat_title} by {author_str}" if author_str else cat_title
+    return None
+
+
+def _resolve_identification(candidate, lang=None):
+    """Ground an LLM book guess against the catalog.
+
+    Prefers the edition in the passage's language; falls back to an unrestricted
+    lookup if that yields nothing. Returns a canonical 'Title by Author' when
+    verified, the original candidate when the catalog is unreachable (graceful
+    degrade), or None when the catalog has no matching work.
+    """
+    title, author = _parse_title_author(candidate)
+    try:
+        match = _catalog_lookup(title, author, lang)
+        if not match and lang:
+            match = _catalog_lookup(title, author, None)
+        return match
+    except _CatalogUnavailable:
+        return candidate
+
+
 def _fake_gpt_response(messages):
     endpoint = request.endpoint if request else None
     if endpoint == 'ocr':
@@ -118,11 +254,16 @@ def _fake_gpt_response(messages):
     return "mocked response"
 
 
-def _call_github_models(messages):
-    cache_key = hashlib.sha256(json.dumps(messages, sort_keys=True).encode()).hexdigest()
+def _call_github_models(messages, meta=None, model=None):
+    model = model or DEFAULT_MODEL
+    cache_key = hashlib.sha256(
+        json.dumps([model, messages], sort_keys=True).encode()
+    ).hexdigest()
     if cache_key in GPT_RESPONSE_CACHE:
+        if meta is not None:
+            meta['gpt_cache_hit'] = True
         return GPT_RESPONSE_CACHE[cache_key]
-    payload = json.dumps({"model": "gpt-4o-mini", "messages": messages}).encode()
+    payload = json.dumps({"model": model, "messages": messages}).encode()
     req = urllib.request.Request(API_URL, data=payload,
         headers={"Authorization": f"Bearer {_ENV_TOKEN}", "Content-Type": "application/json"})
     try:
@@ -142,15 +283,19 @@ def _call_github_models(messages):
     try:
         content = body["choices"][0]["message"]["content"]
         GPT_RESPONSE_CACHE[cache_key] = content
+        if meta is not None:
+            meta['gpt_cache_hit'] = False
         return content
     except (KeyError, IndexError, TypeError):
         raise GPTError("AI service returned an unexpected response", 502, "gpt_error")
 
 
-def call_gpt(messages):
+def call_gpt(messages, meta=None, model=None):
     if AI_PROVIDER == 'fake':
+        if meta is not None:
+            meta['gpt_cache_hit'] = False
         return _fake_gpt_response(messages)
-    return _call_github_models(messages)
+    return _call_github_models(messages, meta=meta, model=model)
 
 @app.errorhandler(GPTError)
 def handle_gpt_error(e):
@@ -231,14 +376,31 @@ def ocr():
             return api_error('invalid_image', 'Invalid image format', 400)
     except Exception:
         return api_error('invalid_image', 'Invalid image data', 400)
+    gpt_meta = {}
     extracted = call_gpt([
-        {"role": "system", "content": "Extract only the text visible in this image. Return raw text exactly as it appears. Nothing else."},
+        {"role": "system", "content": (
+            "Extract only the text visible in this image. Return raw text exactly as it appears. "
+            "No commentary, labels, or preamble (do not write e.g. 'Here is the text'). Nothing else."
+        )},
         {"role": "user", "content": [
             {"type": "text", "text": "Extract the text from this page."},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
         ]}
-    ])
-    return jsonify({"text": extracted})
+    ], meta=gpt_meta)
+    extracted = _clean_passage_text(extracted)
+    payload = {"text": extracted}
+    if _bookmarked_debug():
+        preview = _text_preview(extracted)
+        _debug_log(
+            f'ocr text_len={len(extracted)} cache_hit={gpt_meta.get("gpt_cache_hit")} '
+            f'preview={preview!r}'
+        )
+        payload['debug'] = {
+            'text_len': len(extracted),
+            'text_preview': preview,
+            'gpt_cache_hit': gpt_meta.get('gpt_cache_hit', False),
+        }
+    return jsonify(payload)
 
 @app.route('/identify', methods=['POST'])
 @limiter.limit("20 per day; 5 per minute")
@@ -246,41 +408,88 @@ def identify():
     text = request.json.get('text') if request.json else None
     if not text or not text.strip():
         return api_error('no_text', 'No text provided', 400)
-    book = call_gpt([
-        {"role": "system", "content": "Identify the book and author from this text excerpt. Reply with only: Title by Author. If you cannot identify it, reply with only: UNKNOWN"},
-        {"role": "user", "content": text}
-    ])
-    if book.strip().upper() == "UNKNOWN":
-        return jsonify({"status": "needs_cover"})
-    return jsonify({"status": "ok", "book": book})
+    text = _clean_passage_text(text)
+    gpt_meta = {}
+    candidate = call_gpt([
+        {"role": "system", "content": IDENTIFY_SYSTEM},
+        {"role": "user", "content": text},
+    ], meta=gpt_meta).strip()
+    identify_raw = candidate
+    book = candidate
+    # Ground the guess against a real catalog: an unverifiable title is treated as
+    # unidentified so the user is asked for the book rather than shown a hallucination.
+    # The passage language steers grounding toward the matching-language edition.
+    if candidate.upper() != "UNKNOWN" and _catalog_enabled():
+        lang = detect_passage_language_local(text)
+        resolved = _resolve_identification(candidate, lang)
+        book = resolved if resolved else "UNKNOWN"
 
-PROMPT_LIGHT = """You are a knowledgeable librarian helping a reader pick up where they left off. You speak with warmth, quiet authority, and a genuine love of books — like someone who has read everything and remembers all of it.
+    if book.upper() == "UNKNOWN":
+        payload = {"status": "needs_cover"}
+        if _bookmarked_debug():
+            preview = _text_preview(text)
+            _debug_log(
+                f'identify UNKNOWN text_len={len(text)} raw={identify_raw!r} preview={preview!r}'
+            )
+            payload['debug'] = {
+                'text_len': len(text),
+                'text_preview': preview,
+                'identify_raw': identify_raw,
+                'gpt_cache_hit': gpt_meta.get('gpt_cache_hit', False),
+            }
+        return jsonify(payload)
+    payload = {"status": "ok", "book": book}
+    if _bookmarked_debug():
+        preview = _text_preview(text)
+        _debug_log(
+            f'identify ok book={book!r} raw={identify_raw!r} text_len={len(text)} '
+            f'cache_hit={gpt_meta.get("gpt_cache_hit")} preview={preview!r}'
+        )
+        payload['debug'] = {
+            'text_len': len(text),
+            'text_preview': preview,
+            'identify_raw': identify_raw,
+            'book': book,
+            'gpt_cache_hit': gpt_meta.get('gpt_cache_hit', False),
+        }
+    return jsonify(payload)
 
-Write 4-6 sentences:
-- 1-2 sentences: orient the reader — who the character is, their background, and the stakes of their situation (mission, circumstances, what brought them here)
-- 2-3 sentences: what has been happening recently and what is concretely occurring at this passage
+PROMPT_LIGHT = """You are a knowledgeable librarian giving a reader a "Previously on…" recap — like the cold open of a TV episode — for the book they are returning to. You speak with warmth, quiet authority, and a genuine love of books.
+
+You are given the book's title and author and the passage where the reader stopped. Use your knowledge of this specific book to recap the story that leads up to that passage.
+
+Answer one question for the returning reader: how did the story arrive at this moment? Write 4-6 sentences that trace how the story got here — not a flat list of events, but how one thing leads to the next.
+- Name the novel's protagonist (who the book is chiefly about) and follow the people, places, and turning points that carry the story to this passage.
+- End where the reader is now: what is happening at this point and who is present.
+
+Tell the STORY, not the page:
+- Don't describe the text as text — no "this passage", "this page", and don't say "the poem", "the song", or "the scene" "describes", "features", "presents", or "depicts" anything.
+- But DO include what is actually happening at this point and who is present. If characters are singing, name them and what the song is about, told as a story event — not as a description of the writing. Never call a side character the protagonist or "personnage principal".
 
 Rules:
-- Stick to facts and events. No emotional interpretation ("he feels", "his mind races"), no dramatic framing ("the tension lies in", "this marks a significant moment").
-- No spoilers beyond this passage.
-- No greetings, no filler.
-- Plain present tense."""
+- Use only what actually happens in the book up to this passage. Invent nothing — no events, names, or details you are not sure are in the book.
+- If you are unsure where this passage falls, recap only what is firmly established before it rather than guessing.
+- The passage is a hard spoiler wall: nothing that happens after it.
+- Concrete events only. Cut vague qualifiers and hedging ("playful", "vivid", "whimsical", "light-hearted", "surreal", "festive", "humorously", "hinting at", "ensuring a fun scene"). No emotional interpretation ("he feels"), no dramatic framing ("this marks a significant moment").
+- No greetings, no filler. Plain present tense."""
 
-PROMPT_FULL = """You are a knowledgeable librarian helping a reader who has been away from a book for a long time and needs a full catch-up. You speak with warmth and a genuine love of books.
+PROMPT_FULL = """You are a knowledgeable librarian giving a reader a full catch-up on a book they have been away from for a long time — a detailed "Previously on…" recap. You speak with warmth and a genuine love of books.
 
-Write three sections — no headers, just flowing prose separated by a blank line:
+You are given the book's title and author and the passage where the reader stopped. Use your knowledge of this specific book to retell the story so far.
 
-1. The main characters: who they are, their role in the story, and where they stand as of this passage. Cover every significant character the reader has met so far.
-
-2. The key events: what has happened from the beginning of the book up to this passage, in order. Hit the major plot points — decisions made, conflicts introduced, turning points reached.
-
-3. Right now: what is concretely happening at this exact passage.
+Answer one question for a reader returning to this book after a long time: how did the story arrive at this moment? Write a flowing recap of two to three short paragraphs (about 8-12 sentences) that traces the chain of cause and effect from the beginning of the book to this passage — each major event leading to the next, not a neutral list. Name the protagonist early, carry the reader through the decisions, conflicts, and turning points that lead here, and finish at the moment the reader has just reached. Introduce the other characters as they enter the story, through what they do.
 
 Rules:
+- Tell the STORY, not the page. Don't describe the text as text — no "this passage", "this page", and don't say "the poem", "the song", or "the scene" "describes", "features", or "presents" anything. But DO include what is actually happening in the story at this point and who is present: if characters are singing, name them and what the song is about, told as a story event.
+- Never write roster sentences. Do not say a character "is also an important character", "is a significant character", "plays a role", "represents a trait", or "is very different" — just show what they do in the story. Introduce people by what happens to them.
+- Never promote a side character who only appears here to protagonist.
+- Open straight into the first events of the story. No scene-setting preamble and no abstract characterisation before the action begins.
+- Your final sentence must state a concrete action or fact at the moment the reader has just reached, then stop. Do not end with a sentence about mood, atmosphere, or what is coming ("aventures à venir", "ambiance pétillante", "la tension monte", "on se demande…", "surprise éclatante"). The recap simply ends where the reader is.
+- Introduce the other characters in one running sentence of plain facts, not with "nous découvrons" / "we meet" framing — name them and what they do.
+- Use only events that occur up to this passage; invent nothing. If you are unsure where the passage falls, recap only what is firmly established before it.
 - The passage is the hard spoiler wall. Nothing beyond it.
-- Stick to facts and events. No emotional interpretation, no dramatic framing.
-- No greetings, no filler, no section labels.
-- Plain present tense."""
+- Concrete events only. Cut vague qualifiers and hedging ("playful", "vivid", "whimsical", "festive", "humorously", "hinting at", "probably", "uncertain outcome"). No emotional interpretation, no dramatic framing ("a key moment", "a turning point in the story").
+- No greetings, no filler, no headers or section labels. Plain present tense."""
 
 SUPPORTED_OUTPUT_LANGS = {'en', 'fr'}
 LANG_NAMES = {'en': 'English', 'fr': 'French'}
@@ -400,8 +609,11 @@ def summarize():
     mode = request.json.get('mode', 'light')
     ui_locale = (request.json.get('ui_locale') or 'en').strip().lower()
     lang_code, lang_name = resolve_output_language(text, ui_locale)
+    text = _clean_passage_text(text)
+    gpt_meta = {}
     messages = build_summarize_messages(book, text, mode, lang_code, lang_name)
-    summary = call_gpt(messages)
+    model = SUMMARIZE_FULL_MODEL if mode == 'full' else DEFAULT_MODEL
+    summary = call_gpt(messages, meta=gpt_meta, model=model)
     return jsonify({
         "summary": summary,
         "output_language": lang_code,

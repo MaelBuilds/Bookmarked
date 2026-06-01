@@ -67,6 +67,135 @@ WEBP_BYTES = b'RIFF' + struct.pack('<I', 0) + b'WEBP' + b'\x00' * 20
 PDF_BYTES  = b'%PDF-1.4' + b'\x00' * 20
 TEXT_BYTES = b'Hello, this is plain text, not an image at all'
 
+FIXTURES_IDENTIFY = os.path.join(os.path.dirname(__file__), "fixtures", "identify")
+
+
+def load_identify_fixture(name):
+    path = os.path.join(FIXTURES_IDENTIFY, f"{name}.txt")
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def assert_valid_charlie_dahl_identify(book):
+    """Published Charlie work by Dahl — not a character name as title."""
+    book_lower = book.lower()
+    assert "dahl" in book_lower, f"expected Dahl as author, got: {book!r}"
+    title = book_lower.split(" by ")[0] if " by " in book_lower else book_lower
+    if " par " in book_lower:
+        title = book_lower.split(" par ")[0]
+    assert "gloop" not in title, f"character name used as title: {book!r}"
+    assert "august" not in title, f"character name used as title: {book!r}"
+    assert "bouillon" not in title, f"OCR-adjacent word used as title: {book!r}"
+    assert "charlie" in title or "chocolat" in title, (
+        f"expected Charlie or chocolat in title, got: {book!r}"
+    )
+
+
+# ===========================================================================
+# Identify hygiene (OCR preamble, suspect-title retry)
+# ===========================================================================
+
+class TestIdentifyHygiene:
+    def test_clean_passage_strips_french_ocr_preamble(self):
+        import server as srv
+        raw = "Voici le texte extrait : Joufflu, bouffi, gourmand"
+        assert srv._clean_passage_text(raw) == "Joufflu, bouffi, gourmand"
+
+
+class TestCatalogGrounding:
+    """Identify grounds the LLM guess against a real bibliographic catalog."""
+
+    def test_parse_title_author_handles_by_and_par(self):
+        import server as srv
+        assert srv._parse_title_author("Dune by Frank Herbert") == (
+            "Dune",
+            "Frank Herbert",
+        )
+        assert srv._parse_title_author(
+            "Charlie et la Chocolaterie par Roald Dahl"
+        ) == ("Charlie et la Chocolaterie", "Roald Dahl")
+
+    def test_title_overlap_matches_editions_but_not_unrelated(self):
+        import server as srv
+        assert srv._title_overlap(
+            "Charlie and the Chocolate Factory",
+            "Charlie and the Chocolate Factory: A Play",
+        )
+        assert not srv._title_overlap("Le Bouillon", "Charlie et la Chocolaterie")
+
+    def test_identify_returns_canonical_title_from_catalog(self, client):
+        with patch("server.call_gpt", return_value="charlie and the chocolate factory by r dahl"), \
+             patch("server._catalog_enabled", return_value=True), \
+             patch(
+                 "server._catalog_lookup",
+                 return_value="Charlie and the Chocolate Factory by Roald Dahl",
+             ):
+            r = client.post("/identify", json={"text": "...Augustus Gloop song..."})
+        data = r.get_json()
+        assert data["status"] == "ok"
+        assert data["book"] == "Charlie and the Chocolate Factory by Roald Dahl"
+
+    def test_identify_unverifiable_candidate_falls_back_to_needs_cover(self, client):
+        with patch("server.call_gpt", return_value="Le Bouillon by Roald Dahl"), \
+             patch("server._catalog_enabled", return_value=True), \
+             patch("server._catalog_lookup", return_value=None):
+            r = client.post("/identify", json={"text": "Joufflu, bouffi, gourmand"})
+        assert r.get_json()["status"] == "needs_cover"
+
+    def test_identify_forwards_passage_language_to_grounding(self, client):
+        passage = load_identify_fixture("charlie-fr-gloop")  # French text
+        with patch("server.call_gpt", return_value="Charlie et la Chocolaterie par Roald Dahl"), \
+             patch("server._catalog_enabled", return_value=True), \
+             patch(
+                 "server._resolve_identification",
+                 return_value="Charlie et la Chocolaterie by Roald Dahl",
+             ) as resolve:
+            r = client.post("/identify", json={"text": passage})
+        assert r.get_json()["book"] == "Charlie et la Chocolaterie by Roald Dahl"
+        assert resolve.call_args.args[1] == "fr"
+
+    def test_identify_degrades_to_model_guess_when_catalog_unreachable(self, client):
+        import server as srv
+        with patch("server.call_gpt", return_value="Dune by Frank Herbert"), \
+             patch("server._catalog_enabled", return_value=True), \
+             patch("server._catalog_lookup", side_effect=srv._CatalogUnavailable()):
+            r = client.post("/identify", json={"text": "The spice must flow"})
+        data = r.get_json()
+        assert data["status"] == "ok"
+        assert data["book"] == "Dune by Frank Herbert"
+
+
+class TestRecapPrompts:
+    """Summarize prompts produce a chronological 'Previously on' recap, not a page description."""
+
+    def test_light_prompt_is_chronological_recap(self):
+        from server import PROMPT_LIGHT
+        lower = PROMPT_LIGHT.lower()
+        assert "previously on" in lower
+        assert "protagonist" in lower
+        assert "personnage principal" in lower or "main character" in lower
+        assert "invent" in lower  # explicit no-invented-plot guard
+
+    def test_full_prompt_is_chronological_recap(self):
+        from server import PROMPT_FULL
+        lower = PROMPT_FULL.lower()
+        assert "how did the story arrive at this moment" in lower
+        assert "spoiler wall" in lower
+        assert "invent" in lower
+
+    def test_build_summarize_includes_book_and_passage(self):
+        import server as srv
+        messages = srv.build_summarize_messages(
+            "Charlie et la Chocolaterie by Roald Dahl",
+            "Augustus song passage",
+            "light",
+            "fr",
+            "French",
+        )
+        user = messages[1]["content"]
+        assert "Charlie et la Chocolaterie by Roald Dahl" in user
+        assert "Augustus song passage" in user
+
 
 # ===========================================================================
 # MUST-HAVE: Input validation
@@ -265,7 +394,7 @@ class TestPromptConstruction:
                 })
             messages = mock.call_args[0][0]
             system = messages[0]["content"]
-            assert "three sections" in system
+            assert "8-12 sentences" in system
             assert "4-6 sentences" not in system
 
     def test_default_mode_is_light(self, client):
@@ -329,7 +458,7 @@ class TestPromptConstruction:
 
     def test_spoiler_wall_in_both_prompts(self):
         from server import PROMPT_LIGHT, PROMPT_FULL
-        assert "No spoilers beyond" in PROMPT_LIGHT
+        assert "spoiler wall" in PROMPT_LIGHT
         assert "spoiler wall" in PROMPT_FULL
 
 
@@ -417,6 +546,26 @@ class TestHappyPaths:
             r = client.post("/identify", json={"text": "random text"})
         data = r.get_json()
         assert data["status"] == "needs_cover"
+
+    def test_identify_debug_payload(self, client, monkeypatch):
+        import server as srv
+        monkeypatch.setenv("BOOKMARKED_DEBUG", "1")
+        passage = load_identify_fixture("charlie-fr-gloop")
+        cleaned_len = len(srv._clean_passage_text(passage))
+        with _mock_gpt("Charlie et la Chocolaterie by Roald Dahl"):
+            r = client.post("/identify", json={"text": passage})
+        data = r.get_json()
+        assert data["status"] == "ok"
+        assert data["debug"]["text_len"] == cleaned_len
+        assert "Auguste" in data["debug"]["text_preview"]
+        assert data["debug"]["identify_raw"] == "Charlie et la Chocolaterie by Roald Dahl"
+        assert data["debug"]["gpt_cache_hit"] is False
+
+    def test_identify_debug_omitted_by_default(self, client, monkeypatch):
+        monkeypatch.delenv("BOOKMARKED_DEBUG", raising=False)
+        with _mock_gpt("Dune by Frank Herbert"):
+            r = client.post("/identify", json={"text": "sample"})
+        assert "debug" not in r.get_json()
 
     def test_summarize_returns_summary(self, client):
         with _mock_gpt("Paul Atreides arrives on Arrakis..."):
@@ -508,3 +657,20 @@ class TestLiveAISmoke:
         })
         assert r.status_code == 200
         assert "status" in r.get_json()
+
+    @pytest.mark.live_ai
+    def test_live_identify_charlie_fr_not_character_title(self, monkeypatch):
+        if os.environ.get("RUN_LIVE_AI_TESTS", "").lower() != "true":
+            pytest.skip("Set RUN_LIVE_AI_TESTS=true to call the live model")
+        if not os.environ.get("GITHUB_TOKEN"):
+            pytest.skip("GITHUB_TOKEN is required for live AI smoke tests")
+
+        srv = _reload_server(monkeypatch, provider="github", token=os.environ["GITHUB_TOKEN"])
+        c = srv.app.test_client()
+        passage = load_identify_fixture("charlie-fr-gloop-ocr-preamble")
+
+        r = c.post("/identify", json={"text": passage})
+        assert r.status_code == 200
+        data = r.get_json()
+        assert data["status"] == "ok", data
+        assert_valid_charlie_dahl_identify(data["book"])
