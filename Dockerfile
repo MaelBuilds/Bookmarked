@@ -10,7 +10,7 @@ FROM python:3.12-slim-bookworm
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY server.py ./
+COPY server.py image_orientation.py ./
 COPY assets/ ./assets/
 COPY --from=frontend /app/frontend/dist ./frontend/dist
 CMD ["python", "server.py"]
