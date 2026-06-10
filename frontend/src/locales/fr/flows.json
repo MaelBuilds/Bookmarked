@@ -41,6 +41,7 @@
   "loading": {
     "label": "Lecture de votre page…",
     "done": "Terminé ✦",
+    "warmup": "Démarrage en cours… une petite seconde",
     "sets": [
       ["Ajustement des lunettes…", "Scan de la page…", "Étouffement des spoilers…"],
       ["Recherche du marque-page…", "Recoupement de l'intrigue…", "Scellement du coffre aux spoilers…"],

@@ -56,7 +56,7 @@ export function LinkedInIcon() {
       xmlns="http://www.w3.org/2000/svg"
       style={{ display: 'block' }}
     >
-      <path fill="#FAF2E0" stroke="#8B7355" strokeWidth="6" d={LINKEDIN_ICON_PATH} />
+      <path fill="currentColor" d={LINKEDIN_ICON_PATH} />
     </svg>
   )
 }

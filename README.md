@@ -112,6 +112,29 @@ AI_PROVIDER=github RUN_LIVE_AI_TESTS=true pytest -m live_ai
 
 Use live smoke tests before important releases only. They verify token/API availability, not full summary quality.
 
+Identify-quality regression (French *Charlie* / Auguste Gloop fixture — catches “character as title” mistakes):
+
+```bash
+AI_PROVIDER=github RUN_LIVE_AI_TESTS=true pytest -m live_ai -k charlie_fr
+```
+
+### Debugging wrong book identification
+
+1. **Save the OCR text** from DevTools → Network → `POST /ocr` → `text`, or replace the fixture under `fixtures/identify/`.
+2. **Re-run identify without the UI** (Flask on port 3000, `AI_PROVIDER=github`):
+
+```bash
+set BOOKMARKED_DEBUG=1
+python server.py
+```
+
+```bash
+python scripts/repro-identify.py fixtures/identify/charlie-fr-gloop.txt
+```
+
+3. **Read the response:** `book`, and with debug on — `text_preview`, `identify_raw`, `gpt_cache_hit`. Restart the server after prompt changes; the in-process GPT cache can reuse an old answer in the same process.
+4. **Automate:** add or extend a file in `fixtures/identify/` and the `live_ai` test in `test_server.py` that asserts the title is a real work (not a character name).
+
 ---
 
 ## Status

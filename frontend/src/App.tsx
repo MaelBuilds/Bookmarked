@@ -39,6 +39,7 @@ export function App() {
   const [bookTitle, setBookTitle] = useState('')
   const [summaryParagraphs, setSummaryParagraphs] = useState<string[]>([])
   const [dragHighlight, setDragHighlight] = useState(false)
+  const [warmingUp, setWarmingUp] = useState(false)
 
   const stepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -117,12 +118,16 @@ export function App() {
     setPhase('loading')
     setErrorText(null)
     setProgressPct(5)
+    setWarmingUp(false)
 
     const set = loadingSets[Math.floor(Math.random() * loadingSets.length)]!
+    const warmupTimer = setTimeout(() => setWarmingUp(true), 4000)
 
     try {
       setStep(0, set, 5)
       const { text: ocrText } = await postOcr(imageBase64)
+      clearTimeout(warmupTimer)
+      setWarmingUp(false)
       setProgressPct(33)
 
       const textForSummary = coverMode && originalPageText ? originalPageText : ocrText
@@ -162,6 +167,8 @@ export function App() {
       setPhase('result')
       setProgressPct(0)
     } catch (err) {
+      clearTimeout(warmupTimer)
+      setWarmingUp(false)
       const msg =
         err instanceof BookmarkedFetchError
           ? err.message
@@ -263,6 +270,7 @@ export function App() {
           stepText={loadingStepText}
           stepOpacity={loadingStepOpacity}
           progressPct={progressPct}
+          warmingUp={warmingUp}
         />
       )}
 

@@ -20,6 +20,7 @@ export function SiteFooter() {
             @MaelBuilds
           </a>
         </span>
+        <span aria-hidden="true">/</span>
         <a
           className={footerIconLink}
           href="https://www.linkedin.com/in/maelpalau"

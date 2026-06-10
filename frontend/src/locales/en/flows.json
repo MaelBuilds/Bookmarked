@@ -41,6 +41,7 @@
   "loading": {
     "label": "Reading your page…",
     "done": "Done ✦",
+    "warmup": "Warming up… give us a sec",
     "sets": [
       ["Adjusting reading glasses…", "Scanning the page…", "Shushing the spoilers…"],
       ["Finding your bookmark…", "Cross-referencing the plot…", "Sealing the spoiler vault…"],

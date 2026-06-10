@@ -2,3 +2,4 @@ flask>=3.0,<4
 flask-limiter>=3.5,<4
 Pillow>=10.0,<12
 pytest>=9.0,<10
+gunicorn>=21.0,<24
